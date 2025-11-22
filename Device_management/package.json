@@ -1,0 +1,32 @@
+{
+  "name": "device-management-dashboard",
+  "version": "1.0.0",
+  "description": "Dự án NodeJS MVC quản lý thiết bị từ xa với MySQL, bảng điều khiển thời gian thực, xác thực và điều khiển thiết bị.",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "body-parser": "^1.20.3",
+    "chart.js": "^4.4.1",
+    "connect-flash": "^0.1.1",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^16.6.1",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-session": "^1.18.2",
+    "express-validator": "^7.0.1",
+    "mysql2": "^3.15.3",
+    "passport": "^0.7.0",
+    "passport-local": "^1.0.0",
+    "sequelize": "^6.37.7",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

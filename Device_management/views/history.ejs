@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lịch sử phòng: <%= room.name %> - Quản lý thiết bị</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <div class="dashboard-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>Quản lý thiết bị</h2>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/dashboard">📊 Bảng điều khiển</a>
+        <a href="/rooms">🏠 Quản lý phòng</a>
+        <a href="/history" class="active">📜 Lịch sử</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="/logout">🚪 Đăng xuất</a>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+  <h2>📜 Lịch sử phòng: <%= room.name %></h2>
+  <p style="margin-bottom:20px;"><strong>Địa chỉ IP:</strong> <%= room.ip %></p>
+      
+      <table id="historyTable">
+        <thead>
+          <tr>
+            <th>Thời gian</th>
+            <th>Nhiệt độ (°C)</th>
+            <th>Độ ẩm (%)</th>
+            <th>Trạng thái thiết bị</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (history.length === 0) { %>
+            <tr><td colspan="4" style="text-align:center;">Chưa có dữ liệu lịch sử</td></tr>
+          <% } else { %>
+            <% history.forEach(function(h) { %>
+              <tr>
+                <td><%= new Date(h.createdAt).toLocaleString('vi-VN') %></td>
+                <td><%= h.temperature %>°C</td>
+                <td><%= h.humidity %>%</td>
+                <td><span class="status <%= h.status ? 'on' : 'off' %>"><%= h.status ? '🟢 Bật' : '🔴 Tắt' %></span></td>
+              </tr>
+            <% }); %>
+          <% } %>
+        </tbody>
+      </table>
+      
+      <div style="margin-top:20px;">
+  <button onclick="location.href='/dashboard/room/<%= room.id %>'">⬅️ Quay lại chi tiết phòng</button>
+      </div>
+    </main>
+  </div>
+  
+  <script>
+    const socket = io();
+    const roomId = '<%= room.id %>';
+    const historyBody = document.querySelector('#historyTable tbody');
+
+    // Real-time: Thêm dòng mới vào bảng lịch sử
+    socket.on('sensorUpdate', data => {
+      if (String(data.roomId) === roomId) {
+        if (typeof data.status !== 'boolean') return; // Không có trạng thái thì không thêm dòng mới
+
+        // Xóa dòng "Chưa có dữ liệu" nếu có
+        const noDataRow = historyBody.querySelector('tr td[colspan="3"]');
+        if (noDataRow) {
+          noDataRow.parentElement.remove();
+        }
+
+        // Tạo dòng mới
+        const newRow = document.createElement('tr');
+        newRow.style.animation = 'slideIn 0.5s';
+
+        const now = new Date().toLocaleString('vi-VN');
+        const temp = parseFloat(data.temperature).toFixed(1);
+        const humidity = parseFloat(data.humidity).toFixed(1);
+        let statusHtml = data.status
+          ? '<span class="status on">🟢 Bật</span>'
+          : '<span class="status off">🔴 Tắt</span>';
+
+        newRow.innerHTML = `
+          <td>${now}</td>
+          <td>${temp}°C</td>
+          <td>${humidity}%</td>
+          <td>${statusHtml}</td>
+        `;
+
+        // Thêm vào đầu bảng
+        historyBody.insertBefore(newRow, historyBody.firstChild);
+
+        // Giới hạn 100 dòng
+        if (historyBody.children.length > 100) {
+          historyBody.removeChild(historyBody.lastChild);
+        }
+
+        console.log('📊 History table updated with new data');
+      }
+    });
+  </script>
+  
+  <style>
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+  </style>
+</body>
+</html>

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chi tiết phòng - <%= room.name %></title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <div class="dashboard-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>Quản lý thiết bị</h2>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/dashboard">📊 Bảng điều khiển</a>
+        <a href="/rooms">🏠 Quản lý phòng</a>
+        <a href="/history">📜 Lịch sử</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="/logout">🚪 Đăng xuất</a>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <h2>Chi tiết phòng: <%= room.name %></h2>
+      
+      <div class="room-info">
+  <p><strong>Địa chỉ IP:</strong> <%= room.ip %></p>
+  <p><strong>Kết nối:</strong> <span id="onlineStatus" class="status <%= room.isOnline ? 'on' : 'off' %>"><%= room.isOnline ? '🟢 Trực tuyến' : '⚫ Ngoại tuyến' %></span></p>
+  <p><strong>Trạng thái thiết bị:</strong> <span id="deviceStatus" class="status <%= room.status ? 'on' : 'off' %>"><%= room.status ? '💡 Đang bật' : '⚫ Đang tắt' %></span></p>
+        <div id="controlSection">
+        <% if (room.isOnline) { %>
+          <form action="/rooms/toggle/<%= room.id %>" method="POST" style="margin-top:12px;">
+            <button type="submit" id="toggleBtn"><%= room.status ? '🔴 Tắt thiết bị' : '🟢 Bật thiết bị' %></button>
+          </form>
+        <% } else { %>
+          <p style="color:#dc3545; margin-top:12px;">⚠️ Thiết bị đang ngoại tuyến. Không thể điều khiển.</p>
+        <% } %>
+        </div>
+      </div>
+
+      <div class="chart-container">
+  <h3>📈 Biểu đồ nhiệt độ</h3>
+        <canvas id="tempChart" width="400" height="150"></canvas>
+      </div>
+
+      <div class="chart-container" style="margin-top: 30px;">
+  <h3>📈 Biểu đồ độ ẩm</h3>
+        <canvas id="humidityChart" width="400" height="150"></canvas>
+      </div>
+
+      <div style="margin-top:20px;">
+        <button onclick="location.href='/history/<%= room.id %>'">📜 Xem lịch sử đầy đủ</button>
+      </div>
+    </main>
+  </div>
+  <script>
+    const tempData = JSON.parse('<%- JSON.stringify(history.map(h => h.temperature).reverse()) %>');
+    const humidityData = JSON.parse('<%- JSON.stringify(history.map(h => h.humidity).reverse()) %>');
+    const labels = JSON.parse('<%- JSON.stringify(history.map(h => (new Date(h.createdAt)).toLocaleTimeString()).reverse()) %>');
+    const ctx = document.getElementById('tempChart').getContext('2d');
+    
+    const tempChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Nhiệt độ (°C)',
+          data: tempData,
+          borderColor: 'rgb(75, 192, 192)',
+          backgroundColor: 'rgba(75, 192, 192, 0.1)',
+          borderWidth: 3,
+          fill: true,
+          tension: 0.4, // Đường cong mượt hơn
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: 'rgb(75, 192, 192)',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: 'rgb(75, 192, 192)',
+          pointHoverBorderWidth: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        animation: {
+          duration: 750, // Animation mượt mà
+          easing: 'easeInOutQuart'
+        },
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+            labels: {
+              usePointStyle: true,
+              padding: 15,
+              font: {
+                size: 13,
+                weight: 'bold'
+              }
+            }
+          },
+          tooltip: {
+            enabled: true,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            titleFont: {
+              size: 14,
+              weight: 'bold'
+            },
+            bodyFont: {
+              size: 13
+            },
+            padding: 12,
+            cornerRadius: 8,
+            displayColors: true,
+            callbacks: {
+              label: function(context) {
+                return ' Nhiệt độ: ' + context.parsed.y.toFixed(1) + '°C';
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            display: true,
+            grid: {
+              display: true,
+              color: 'rgba(0, 0, 0, 0.05)'
+            },
+            ticks: {
+              maxTicksLimit: 10,
+              font: {
+                size: 11
+              }
+            }
+          },
+          y: {
+            beginAtZero: true,
+            min: 0,
+            max: 60,
+            grid: {
+              display: true,
+              color: 'rgba(0, 0, 0, 0.05)'
+            },
+            ticks: {
+              font: {
+                size: 11
+              },
+              callback: function(value) {
+                return value + '°C';
+              }
+            }
+          }
+        }
+      }
+    });
+    const humidityChart = new Chart(document.getElementById('humidityChart').getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Độ ẩm (%)',
+          data: humidityData,
+          borderColor: 'rgb(54, 162, 235)',
+          backgroundColor: 'rgba(54, 162, 235, 0.1)',
+          borderWidth: 3,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          pointBackgroundColor: 'rgb(54, 162, 235)',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: 'rgb(54, 162, 235)',
+          pointHoverBorderWidth: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        animation: {
+          duration: 750,
+          easing: 'easeInOutQuart'
+        },
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+            labels: {
+              usePointStyle: true,
+              padding: 15,
+              font: {
+                size: 13,
+                weight: 'bold'
+              }
+            }
+          },
+          tooltip: {
+            enabled: true,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            titleFont: {
+              size: 14,
+              weight: 'bold'
+            },
+            bodyFont: {
+              size: 13
+            },
+            padding: 12,
+            cornerRadius: 8,
+            displayColors: true,
+            callbacks: {
+              label: function(context) {
+                return ' Độ ẩm: ' + context.parsed.y.toFixed(1) + '%';
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            display: true,
+            grid: {
+              display: true,
+              color: 'rgba(0, 0, 0, 0.05)'
+            },
+            ticks: {
+              maxTicksLimit: 10,
+              font: {
+                size: 11
+              }
+            }
+          },
+          y: {
+            beginAtZero: true,
+            min: 0,
+            max: 100
+          }
+        }
+      }
+    });
+    
+    // Socket.IO - Real-time updates
+    const socket = io();
+    const roomId = '<%= room.id %>';
+    
+    // Lắng nghe dữ liệu sensor mới
+    socket.on('sensorUpdate', data => {
+      if (String(data.roomId) === roomId) {
+        // Cập nhật chart real-time với animation mượt
+        const now = new Date().toLocaleTimeString();
+        
+        // Thêm dữ liệu mới vào chart
+        tempChart.data.labels.push(now);
+        tempChart.data.datasets[0].data.push(parseFloat(data.temperature));
+        
+        // Giới hạn 30 điểm dữ liệu trên chart
+        if (tempChart.data.labels.length > 30) {
+          tempChart.data.labels.shift();
+          tempChart.data.datasets[0].data.shift();
+        }
+        
+        tempChart.update();
+        
+        console.log('📊 Chart updated with new temperature:', data.temperature + '°C');
+      }
+    });
+    
+    // Cập nhật trạng thái thiết bị real-time
+    socket.on('roomDetailUpdate', data => {
+      if (String(data.roomId) === roomId) {
+        const onlineStatus = document.getElementById('onlineStatus');
+        const deviceStatus = document.getElementById('deviceStatus');
+        const controlSection = document.getElementById('controlSection');
+        const toggleBtn = document.getElementById('toggleBtn');
+        
+        // Cập nhật trạng thái online/offline
+        if (typeof data.isOnline === 'boolean') {
+          onlineStatus.className = 'status ' + (data.isOnline ? 'on' : 'off');
+          onlineStatus.textContent = data.isOnline ? '🟢 Trực tuyến' : '⚫ Ngoại tuyến';
+          
+          // Cập nhật phần điều khiển
+          if (data.isOnline) {
+            controlSection.innerHTML = `
+              <form action="/rooms/toggle/${roomId}" method="POST" style="margin-top:12px;">
+                <button type="submit" id="toggleBtn">${data.status ? '🔴 Tắt thiết bị' : '🟢 Bật thiết bị'}</button>
+              </form>
+            `;
+          } else {
+            controlSection.innerHTML = '<p style="color:#dc3545; margin-top:12px;">⚠️ Thiết bị đang ngoại tuyến. Không thể điều khiển.</p>';
+          }
+        }
+        
+        // Cập nhật trạng thái thiết bị (bật/tắt)
+        if (typeof data.status === 'boolean') {
+          deviceStatus.className = 'status ' + (data.status ? 'on' : 'off');
+          deviceStatus.textContent = data.status ? '💡 Đang bật' : '⚫ Đang tắt';
+          
+          // Cập nhật nút toggle nếu online
+          if (toggleBtn) {
+            toggleBtn.textContent = data.status ? '🔴 Tắt thiết bị' : '🟢 Bật thiết bị';
+          }
+        }
+        
+        console.log('🔄 Room status updated:', data);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng ký - Quản lý thiết bị</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="auth-container">
+    <h2>Đăng ký tài khoản mới</h2>
+    <% if (errors && errors.length > 0) { %>
+      <div class="alert alert-danger">
+        <ul>
+          <% errors.forEach(function(error) { %>
+            <li><%= error.msg %></li>
+          <% }); %>
+        </ul>
+      </div>
+    <% } %>
+    <form action="/register" method="POST">
+      <div>
+        <label for="username">Tên đăng nhập</label>
+        <input type="text" id="username" name="username" value="<%= typeof username !== 'undefined' ? username : '' %>" placeholder="Nhập tên đăng nhập" required>
+      </div>
+      <div>
+        <label for="password">Mật khẩu</label>
+        <input type="password" id="password" name="password" placeholder="Nhập mật khẩu" required>
+      </div>
+      <div>
+        <label for="password2">Nhập lại mật khẩu</label>
+        <input type="password" id="password2" name="password2" placeholder="Nhập lại mật khẩu" required>
+      </div>
+      <button type="submit">Đăng ký</button>
+    </form>
+    <p>Đã có tài khoản? <a href="/login">Đăng nhập ngay</a></p>
+  </div>
+</body>
+</html>

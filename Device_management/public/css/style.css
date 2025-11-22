@@ -1,0 +1,75 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f4f8; font-size: 18px; }
+
+/* Auth pages */
+.auth-container { max-width: 550px; margin: 80px auto; background: #fff; padding: 60px; border-radius: 16px; box-shadow: 0 6px 30px rgba(0,0,0,0.1); }
+.auth-container h2 { margin-bottom: 35px; color: #1a1a1a; text-align: center; font-size: 32px; }
+.auth-container form > div { margin-bottom: 28px; }
+.auth-container label { display: block; margin-bottom: 10px; font-weight: 500; color: #333; font-size: 17px; }
+.auth-container input[type="text"], .auth-container input[type="password"] { width: 100%; padding: 16px 18px; border: 1px solid #ddd; border-radius: 8px; font-size: 18px; }
+.auth-container input:focus { outline: none; border-color: #007bff; box-shadow: 0 0 0 3px rgba(0,123,255,0.1); }
+.auth-container button { width: 100%; padding: 18px; background: #007bff; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 19px; font-weight: 600; }
+.auth-container button:hover { background: #0056b3; }
+.auth-container p { text-align: center; margin-top: 24px; color: #555; font-size: 17px; }
+.auth-container a { color: #007bff; text-decoration: none; font-weight: 500; }
+.auth-container a:hover { text-decoration: underline; }
+.alert { margin: 20px 0; padding: 18px; border-radius: 8px; font-size: 17px; }
+.alert-danger { background: #ffe0e0; color: #b30000; border-left: 4px solid #dc3545; }
+.alert ul { list-style: none; }
+
+/* Dashboard layout with sidebar */
+.dashboard-layout { display: flex; height: 100vh; }
+.sidebar { width: 300px; background: linear-gradient(180deg, #e3eafc 0%, #f8fafc 100%); color: #222; display: flex; flex-direction: column; box-shadow: 2px 0 15px rgba(0,0,0,0.07); }
+.sidebar-header { padding: 32px 28px; background: rgba(255,255,255,0.5); border-bottom: 1px solid #e0e7ef; }
+.sidebar-header h2 { font-size: 28px; color: #222; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.04); }
+.sidebar-nav { flex: 1; padding: 28px 0; }
+.sidebar-nav a { display: block; padding: 20px 28px; color: #222; text-decoration: none; transition: all 0.3s; font-size: 18px; border-left: 4px solid transparent; }
+.sidebar-nav a:hover { background: #e6f0fa; border-left-color: #5dade2; }
+.sidebar-nav a.active { background: #d0e6fd; border-left-color: #5dade2; font-weight: 600; color: #1976d2; }
+.sidebar-nav a i { margin-right: 14px; }
+.sidebar-footer { padding: 28px; border-top: 1px solid #e0e7ef; }
+.sidebar-footer a { color: #e74c3c; font-weight: 600; text-decoration: none; font-size: 18px; padding: 12px 0; display: inline-block; }
+.sidebar-footer a:hover { text-decoration: underline; color: #c0392b; }
+
+.main-content { flex: 1; overflow-y: auto; padding: 45px 55px; background: #ffffff; }
+.main-content h2 { margin-bottom: 36px; color: #1a1a1a; font-size: 36px; font-weight: 700; }
+.main-content h3 { margin-bottom: 24px; margin-top: 36px; color: #2c3e50; font-size: 26px; font-weight: 600; }
+
+/* Room boxes */
+.rooms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 28px; margin-top: 36px; }
+.room-box { background: #fff; padding: 32px; border-radius: 14px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); cursor: pointer; transition: all 0.3s; border: 2px solid transparent; }
+.room-box:hover { box-shadow: 0 10px 30px rgba(0,0,0,0.15); transform: translateY(-8px); border-color: #3498db; }
+.room-box h3 { margin-bottom: 18px; color: #1a1a1a; font-size: 24px; font-weight: 700; }
+.room-box p { margin-bottom: 14px; color: #555; font-size: 18px; }
+.status.on { color: #28a745; font-weight: bold; font-size: 19px; }
+.status.off { color: #dc3545; font-weight: bold; font-size: 19px; }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; margin-top: 36px; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+th, td { padding: 20px 24px; text-align: left; border-bottom: 1px solid #e9ecef; }
+th { background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%); font-weight: 700; color: #1a1a1a; text-transform: uppercase; font-size: 15px; letter-spacing: 0.5px; }
+td { color: #555; font-size: 18px; }
+tr:hover { background: #f0f8ff; }
+td button { margin-right: 10px; }
+
+/* Forms */
+.form-inline { display: flex; gap: 18px; margin-bottom: 36px; flex-wrap: wrap; }
+.form-inline input { flex: 1; min-width: 280px; padding: 16px 18px; border: 2px solid #ddd; border-radius: 8px; font-size: 18px; transition: all 0.3s; }
+.form-inline input:focus { outline: none; border-color: #28a745; box-shadow: 0 0 0 3px rgba(40,167,69,0.1); }
+.form-inline button { padding: 16px 32px; background: #28a745; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 18px; transition: all 0.3s; }
+.form-inline button:hover { background: #218838; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(40,167,69,0.3); }
+
+button { padding: 14px 24px; background: #007bff; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 17px; transition: all 0.3s; }
+button:hover { background: #0056b3; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,123,255,0.3); }
+button.btn-danger { background: #dc3545; }
+button.btn-danger:hover { background: #c82333; box-shadow: 0 4px 12px rgba(220,53,69,0.3); }
+button.btn-warning { background: #ffc107; color: #000; }
+button.btn-warning:hover { background: #e0a800; box-shadow: 0 4px 12px rgba(255,193,7,0.3); }
+
+/* Chart container */
+.chart-container { background: #fff; padding: 32px; border-radius: 12px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); margin-top: 32px; }
+.chart-container h3 { margin-bottom: 24px; font-size: 22px; }
+.room-info { background: #fff; padding: 28px; border-radius: 12px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); margin-bottom: 32px; }
+.room-info h2 { margin-bottom: 16px; font-size: 28px; }
+.room-info p { margin-bottom: 12px; color: #666; font-size: 17px; }
+.room-info button { margin-top: 16px; padding: 14px 28px; font-size: 16px; }

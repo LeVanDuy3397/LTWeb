@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lịch sử - Quản lý thiết bị</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="dashboard-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>Device Manager</h2>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/dashboard">📊 Dashboard</a>
+        <a href="/rooms">🏠 Quản lý phòng</a>
+        <a href="/history" class="active">📜 Lịch sử</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="/logout">🚪 Đăng xuất</a>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <h2>📜 Lịch sử dữ liệu</h2>
+      <p style="margin-bottom:32px; font-size:17px; color:#666;">Chọn phòng để xem lịch sử chi tiết</p>
+      
+      <div class="rooms-grid">
+        <% if (rooms.length === 0) { %>
+          <p>Chưa có phòng nào. <a href="/rooms">Thêm phòng mới</a></p>
+        <% } else { %>
+          <% rooms.forEach(function(room) { %>
+            <div class="room-box" onclick="location.href='/history/<%= room.id %>'">
+              <h3><%= room.name %></h3>
+              <p><strong>IP:</strong> <%= room.ip %></p>
+              <p><strong>Kết nối:</strong> <span class="status <%= room.isOnline ? 'on' : 'off' %>"><%= room.isOnline ? '🟢 Online' : '⚫ Offline' %></span></p>
+              <p><strong>Trạng thái:</strong> <span class="status <%= room.status ? 'on' : 'off' %>"><%= room.status ? '🟢 Bật' : '⚫ Tắt' %></span></p>
+              <p style="margin-top:16px; color:#007bff; font-weight:600;">📜 Xem lịch sử →</p>
+            </div>
+          <% }); %>
+        <% } %>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

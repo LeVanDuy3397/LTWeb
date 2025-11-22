@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý phòng - Quản lý thiết bị</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="dashboard-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>Quản lý thiết bị</h2>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/dashboard">📊 Bảng điều khiển</a>
+        <a href="/rooms" class="active">🏠 Quản lý phòng</a>
+        <a href="/history">📜 Lịch sử</a>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="/logout">🚪 Đăng xuất</a>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+  <h2>Quản lý phòng</h2>
+      <% if (errors && errors.length > 0) { %>
+        <div class="alert alert-danger">
+          <ul>
+            <% errors.forEach(function(error) { %>
+              <li><%= error.msg %></li>
+            <% }); %>
+          </ul>
+        </div>
+      <% } %>
+      
+      <form action="/rooms/add" method="POST" class="form-inline">
+  <input type="text" name="name" placeholder="Tên phòng (VD: Phòng khách)" required>
+  <input type="text" name="ip" id="ipInput" placeholder="IP hoặc Domain (VD: 192.168.1.100 hoặc esp32.example.com:4000)" required>
+  <button type="submit">➕ Thêm phòng</button>
+  <button type="button" onclick="showExamples()" style="background: #17a2b8; margin-left: 10px;">❓ Ví dụ</button>
+      </form>
+      
+      <div id="examplesBox" style="display: none; background: #e7f3ff; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #2196F3; animation: slideDown 0.3s ease;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <strong style="font-size: 16px;">💡 Ví dụ nhập địa chỉ</strong>
+          <button onclick="hideExamples()" style="background: transparent; border: none; font-size: 20px; cursor: pointer; color: #666;">&times;</button>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;">
+          <!-- Cột 1 -->
+          <div>
+            <p style="margin: 5px 0; font-weight: bold; color: #2196F3;">📍 IP cục bộ (Local):</p>
+            <div class="example-item" onclick="fillExample('192.168.1.100')">
+              <code>192.168.1.100</code>
+            </div>
+            <div class="example-item" onclick="fillExample('192.168.1.100:80')">
+              <code>192.168.1.100:80</code>
+            </div>
+            
+            <p style="margin: 15px 0 5px 0; font-weight: bold; color: #2196F3;">🖥️ Localhost:</p>
+            <div class="example-item" onclick="fillExample('localhost:4000')">
+              <code>localhost:4000</code>
+            </div>
+            <div class="example-item" onclick="fillExample('127.0.0.1:4000')">
+              <code>127.0.0.1:4000</code>
+            </div>
+          </div>
+          
+          <!-- Cột 2 -->
+          <div>
+            <p style="margin: 5px 0; font-weight: bold; color: #2196F3;">🌐 Tên miền (Domain):</p>
+            <div class="example-item" onclick="fillExample('esp32.example.com')">
+              <code>esp32.example.com</code>
+            </div>
+            <div class="example-item" onclick="fillExample('esp32.example.com:4000')">
+              <code>esp32.example.com:4000</code>
+            </div>
+            
+            <p style="margin: 15px 0 5px 0; font-weight: bold; color: #2196F3;">☁️ cPanel/Hosting:</p>
+            <div class="example-item" onclick="fillExample('esp32simulator.yourdomain.com:4000')">
+              <code>esp32simulator.yourdomain.com:4000</code>
+            </div>
+          </div>
+        </div>
+        
+        <div style="background: #fff3cd; padding: 10px; border-radius: 6px; margin-top: 15px; border-left: 3px solid #ffc107;">
+          <strong>⚠️ Lưu ý:</strong>
+          <ul style="margin: 8px 0 0 20px; font-size: 13px;">
+            <li>Nếu không ghi port, mặc định sẽ dùng port <strong>80</strong></li>
+            <li>ESP32 simulator thường chạy trên port <strong>4000</strong> hoặc <strong>3000</strong></li>
+            <li>Không cần thêm <code>http://</code> hoặc dấu <code>/</code> ở cuối</li>
+          </ul>
+        </div>
+      </div>
+      
+      <style>
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .example-item {
+          background: white;
+          padding: 8px 12px;
+          margin: 5px 0;
+          border-radius: 5px;
+          cursor: pointer;
+          transition: all 0.2s;
+          border: 2px solid #e0e0e0;
+        }
+        
+        .example-item:hover {
+          background: #2196F3;
+          color: white;
+          border-color: #2196F3;
+          transform: translateX(5px);
+        }
+        
+        .example-item code {
+          font-size: 13px;
+          font-weight: 500;
+        }
+        
+        .example-item:hover code {
+          color: white;
+        }
+      </style>
+
+  <h3>Danh sách phòng</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Tên phòng</th>
+            <th>Địa chỉ (IP/Domain)</th>
+            <th>Kết nối</th>
+            <th>Trạng thái thiết bị</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (rooms.length === 0) { %>
+            <tr><td colspan="5" style="text-align:center;">Chưa có phòng nào</td></tr>
+          <% } else { %>
+            <% rooms.forEach(function(room) { %>
+              <tr>
+                <td><strong><%= room.name %></strong></td>
+                <td><%= room.ip %></td>
+                <td>
+                  <span class="status <%= room.isOnline ? 'on' : 'off' %>">
+                    <%= room.isOnline ? '🟢 Trực tuyến' : '⚫ Ngoại tuyến' %>
+                  </span>
+                </td>
+                <td><span class="status <%= room.status ? 'on' : 'off' %>"><%= room.status ? '💡 Bật' : '⚫ Tắt' %></span></td>
+                <td>
+                  <button onclick="location.href='/dashboard/room/<%= room.id %>'">📈 Xem chi tiết</button>
+                  <button class="btn-warning btn-edit" data-id="<%= room.id %>" data-name="<%= room.name %>" data-ip="<%= room.ip %>">✏️ Sửa</button>
+                  <form action="/rooms/delete/<%= room.id %>" method="POST" style="display:inline;" onsubmit="return confirm('Bạn có chắc muốn xóa phòng này?')">
+                    <button type="submit" class="btn-danger">❌ Xóa</button>
+                  </form>
+                </td>
+              </tr>
+            <% }); %>
+          <% } %>
+        </tbody>
+      </table>
+    </main>
+  </div>
+  <script>
+    // Xử lý sự kiện click cho các nút Sửa
+    document.addEventListener('DOMContentLoaded', function() {
+      const editButtons = document.querySelectorAll('.btn-edit');
+      editButtons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          const id = this.getAttribute('data-id');
+          const name = this.getAttribute('data-name');
+          const ip = this.getAttribute('data-ip');
+          editRoom(id, name, ip);
+        });
+      });
+    });
+
+    function editRoom(id, name, ip) {
+      const newName = prompt('Nhập tên phòng mới:', name);
+      const newIp = prompt('Nhập địa chỉ mới (IP/Domain với port):\nVí dụ: 192.168.1.100:80 hoặc esp32.example.com:4000', ip);
+      if (newName && newIp) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/rooms/edit/' + id;
+        const nameInput = document.createElement('input');
+        nameInput.type = 'hidden';
+        nameInput.name = 'name';
+        nameInput.value = newName;
+        const ipInput = document.createElement('input');
+        ipInput.type = 'hidden';
+        ipInput.name = 'ip';
+        ipInput.value = newIp;
+        form.appendChild(nameInput);
+        form.appendChild(ipInput);
+        document.body.appendChild(form);
+        form.submit();
+      }
+    }
+  </script>
+</body>
+</html>
