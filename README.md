@@ -1,4 +1,4 @@
-# 🚀 Project Name — Mô tả dự án
+# 🚀 Dự án quản lý thiết bị trong nhà — Mô tả dự án
 
 Dự án này gồm:
 - ESP32 thu thập dữ liệu (nhiệt độ, độ ẩm, sau đó thực hiện điều khiển đèn, quạt từ giao diện) sau đó mã hóa AES-256 hoặc DES
