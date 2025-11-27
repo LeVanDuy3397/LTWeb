@@ -42,11 +42,14 @@
                 <p><strong>Địa chỉ IP:</strong>
                   <%= room.ip %>
                 </p>
-                <p><strong>Kết nối:</strong> <span class="status <%= room.isOnline ? 'on' : 'off' %>">
-                    <%= room.isOnline ? '🟢 Trực tuyến' : '⚫ Ngoại tuyến' %>
+                <p><strong>Kết nối:</strong> <span class="status <%= room.is_online ? 'on' : 'off' %>">
+                    <%= room.is_online ? '🟢 Trực tuyến' : '⚫ Ngoại tuyến' %>
                   </span></p>
-                <p><strong>Trạng thái thiết bị:</strong> <span class="status <%= room.status ? 'on' : 'off' %>">
-                    <%= room.status ? '💡 Bật' : '⚫ Tắt' %>
+                <p><strong>Trạng thái đèn:</strong> <span class="status <%= room.status_led ? 'on' : 'off' %>">
+                    <%= room.status_led ? '💡 Bật' : '⚫ Tắt' %>
+                  </span></p>
+                <p><strong>Trạng thái quạt:</strong> <span class="status <%= room.status_fan ? 'on' : 'off' %>">
+                    <%= room.status_fan ? '🌀 Bật' : '⚫ Tắt' %>
                   </span></p>
                 <p class="temp-display" style="margin-top:10px; color:#FF6B6B; font-weight:bold; font-size:1.1em;">🌡️
                   --°C</p>
@@ -62,7 +65,7 @@
     const socket = io();
 
     // Real-time cập nhật nhiệt độ và độ ẩm
-    socket.on('sensorUpdate', data => {
+    socket.on('data_from_esp32_update', data => {
       const roomBox = document.querySelector(`[data-room-id="${data.roomId}"]`);
       if (roomBox) {
         const tempDisplay = roomBox.querySelector('.temp-display');
@@ -83,9 +86,9 @@
     });
 
     // Reload khi thay đổi trạng thái bật/tắt
-    socket.on('roomStatusUpdate', data => {
-      location.reload();
-    });
+    // socket.on('roomStatusUpdate', data => {
+    //   location.reload();
+    // });
   </script>
   <style>
     @keyframes flash {

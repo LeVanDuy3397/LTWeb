@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chi tiết phòng - <%= room.name %></title>
   <link rel="stylesheet" href="/css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 </head>
 <body>
   <div class="dashboard-layout">
@@ -29,20 +30,136 @@
     <main class="main-content">
       <h2>Chi tiết phòng: <%= room.name %></h2>
       
+      <!-- Phần cài đặt -->
+    <button class="settings-button" onclick="toggleSettings()">⚙️</button>
+    <div class="settings-overlay" id="settingsOverlay" onclick="toggleSettings()"></div>
+    <div class="settings-panel" id="settingsPanel">
+      <div class="settings-header">
+        <h3>⚙️ Cài đặt</h3>
+        <button class="close-settings" onclick="toggleSettings()">×</button>
+      </div>
+      <div class="settings-content">
+
+        <div class="setting-item">
+          <h4>🌀 Quyền điều khiển quạt</h4>
+          <p>Cho phép hoặc từ chối quyền điều khiển quạt trong phòng này</p>
+          <div class="toggle-label">
+            <span>Trạng thái: <span class="status-badge <%= allowFan_control ? 'enabled' : 'disabled' %>" id="fanControlStatus">
+              <%= allowFan_control ? 'Đã cấp' : 'Đã khóa' %>
+            </span> </span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="fanControlToggle" <%= allowFan_control ? 'checked' : '' %> onchange="allowFanControl()">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <h4>🔐 Mã hóa độ ẩm</h4>
+          <p>Bật mã hóa để bảo vệ dữ liệu độ ẩm</p>
+          <div class="toggle-label">
+            <span>Trạng thái: <span class="status-badge <%= humidityEncryption?.enabled ? 'enabled' : 'disabled' %>" id="encryptionStatus">
+              <%= humidityEncryption?.enabled ? 'Đã bật' : 'Đã tắt' %>
+            </span></span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="encryptionToggle" <%= humidityEncryption?.enabled ? 'checked' : '' %> onchange="toggleEncryption()">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <!-- Hiển thị phần chọn thuật toán khi đã bật mã hóa -->
+          <div id="encryptionMethodSection" style="<%= humidityEncryption?.enabled ? '' : 'display:none;' %> margin-top: 20px;">
+            <h5>Chọn thuật toán mã hóa:</h5>
+            <div class="encryption-methods">
+              <div class="method-card <%= humidityEncryption?.method === 'AES-256' ? 'active' : '' %>" onclick="selectEncryptionMethod(this, 'AES-256')">
+                <!-- Thêm event vào để trình duyệt biết được là vừa mới nhấn CLICK vào cái div nào, dùng event.currentTarget sẽ xác định-->
+                <div class="method-icon">🛡️</div>
+                <div class="method-name">AES-256</div>
+                <div class="method-desc">Bảo mật cao, phổ biến</div>
+              </div>
+            <div class="method-card <%= humidityEncryption?.method === 'DES' ? 'active' : '' %>" onclick="selectEncryptionMethod(this, 'DES')">
+              <div class="method-icon">🔒</div>
+              <div class="method-name">DES</div>
+              <div class="method-desc">Cơ bản, tốc độ nhanh</div>
+            </div>
+            </div>
+            <p style="margin-top: 10px; font-size: 0.9em; color: #666;">
+              Thuật toán hiện tại: <strong id="currentMethod"><%= humidityEncryption?.method || 'Chưa chọn' %></strong>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+      <!-- Thông tin phòng và điều khiển thiết bị -->
       <div class="room-info">
-  <p><strong>Địa chỉ IP:</strong> <%= room.ip %></p>
-  <p><strong>Kết nối:</strong> <span id="onlineStatus" class="status <%= room.isOnline ? 'on' : 'off' %>"><%= room.isOnline ? '🟢 Trực tuyến' : '⚫ Ngoại tuyến' %></span></p>
-  <p><strong>Trạng thái thiết bị:</strong> <span id="deviceStatus" class="status <%= room.status ? 'on' : 'off' %>"><%= room.status ? '💡 Đang bật' : '⚫ Đang tắt' %></span></p>
-        <div id="controlSection">
-        <% if (room.isOnline) { %>
-          <form action="/rooms/toggle/<%= room.id %>" method="POST" style="margin-top:12px;">
-            <button type="submit" id="toggleBtn"><%= room.status ? '🔴 Tắt thiết bị' : '🟢 Bật thiết bị' %></button>
+        <p><strong>Địa chỉ IP:</strong> <%= room.ip %></p>
+        <p><strong>Kết nối:</strong> <span id="is_online" class="status <%= room.is_online ? 'on' : 'off' %>"><%= room.is_online ? '🟢 Trực tuyến' : '⚫ Ngoại tuyến' %></span></p>
+        <p><strong>Trạng thái đèn</strong> <span id="status_led" class="status <%= room.status_led ? 'on' : 'off' %>"><%= room.status_led ? '💡 Đang bật' : '⚫ Đang tắt' %></span></p>
+        <div id="control_ledSection">
+        <% if (room.is_online) { %>
+          <form action="/rooms/toggle_led/<%= room.id %>" method="POST" style="margin-top:12px;">
+            <button type="submit" id="toggleBtn_led"><%= room.status_led ? '🔴 Tắt đèn' : '🟢 Bật đèn' %></button>
           </form>
         <% } else { %>
-          <p style="color:#dc3545; margin-top:12px;">⚠️ Thiết bị đang ngoại tuyến. Không thể điều khiển.</p>
+          <p style="color:#dc3545; margin-top:12px;">⚠️ Đèn đang ngoại tuyến. Không thể điều khiển.</p>
+        <% } %>
+        </div>
+  <p><strong> Trạng thái quạt</strong> <span id="status_fan" class="status <%= room.status_fan ? 'on' : 'off' %>"><%= room.status_fan ? '🌀 Đang bật' : '⚫ Đang tắt' %></span></p>
+        <div id="control_fanSection">
+        <% if (room.is_online && allowFan_control) { %>
+          <form action="/rooms/toggle_fan/<%= room.id %>" method="POST" style="margin-top:12px;">
+            <button type="submit" id="toggleBtn_fan"><%= room.status_fan ? '🔴 Tắt quạt' : '🟢 Bật quạt' %></button>
+          </form>
+        <% } if (!room.is_online) { %>
+          <p style="color:#dc3545; margin-top:12px;">⚠️ Quạt đang ngoại tuyến. Không thể điều khiển.</p>
+        <% } if (!allowFan_control) { %>
+          <p style="color:#dc3545; margin-top:12px;">⚠️ Bạn không thể điều khiển quạt. Hãy vào cài đặt để cấp quyền.</p>
         <% } %>
         </div>
       </div>
+
+      <!-- Khối hiển thị thông tin mã hóa độ ẩm -->
+      <div class="encryption-info-container" id="encryptionInfoContainer">
+        <div class="encryption-header">
+          <span class="encryption-icon">🔐</span>
+          <h3 id="encryptionTitle">Trạng thái mã hóa độ ẩm</h3>
+          <span class="encryption-badge" id="encryptionBadge">
+            <%= humidityEncryption?.enabled ? '✓ Đã bật' : '✗ Đã tắt' %>
+          </span>
+        </div>
+        <div class="encryption-content" id="encryptionContent"  style="<%= humidityEncryption?.enabled ? '' : 'display:none;' %>">
+          <div class="encryption-method-display">
+            <span class="method-label">Thuật toán:</span>
+            <span class="method-value" id="activeMethod">
+              <%= humidityEncryption?.method || 'N/A' %>
+            </span>
+          </div>
+          <div class="humidity-data-row">
+            <div class="data-box encrypted-box">
+              <div class="data-label">
+                <span class="lock-icon">🔒</span>
+                Dữ liệu mã hóa
+              </div>
+              <div class="data-value encrypted-value" id="encryptedHumidity">
+                Đang chờ dữ liệu...
+              </div>
+            </div>
+            <div class="decrypt-arrow">
+              <span>→</span>
+            </div>
+            <div class="data-box decrypted-box">
+              <div class="data-label">
+                <span class="unlock-icon">🔓</span>
+                Dữ liệu giải mã
+              </div>
+              <div class="data-value decrypted-value" id="decryptedHumidity">
+                Đang chờ dữ liệu...
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
 
       <div class="chart-container">
   <h3>📈 Biểu đồ nhiệt độ</h3>
@@ -59,266 +176,493 @@
       </div>
     </main>
   </div>
-  <script>
-    const tempData = JSON.parse('<%- JSON.stringify(history.map(h => h.temperature).reverse()) %>');
-    const humidityData = JSON.parse('<%- JSON.stringify(history.map(h => h.humidity).reverse()) %>');
-    const labels = JSON.parse('<%- JSON.stringify(history.map(h => (new Date(h.createdAt)).toLocaleTimeString()).reverse()) %>');
-    const ctx = document.getElementById('tempChart').getContext('2d');
-    
-    const tempChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Nhiệt độ (°C)',
-          data: tempData,
-          borderColor: 'rgb(75, 192, 192)',
-          backgroundColor: 'rgba(75, 192, 192, 0.1)',
-          borderWidth: 3,
-          fill: true,
-          tension: 0.4, // Đường cong mượt hơn
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          pointBackgroundColor: 'rgb(75, 192, 192)',
-          pointBorderColor: '#fff',
-          pointBorderWidth: 2,
-          pointHoverBackgroundColor: '#fff',
-          pointHoverBorderColor: 'rgb(75, 192, 192)',
-          pointHoverBorderWidth: 3
-        }]
+ <script>
+  const tempData = JSON.parse('<%- JSON.stringify(history.map(h => h.temperature).reverse()) %>');
+  const humidityData = JSON.parse('<%- JSON.stringify(history.map(h => h.humidity).reverse()) %>');
+  const labels = JSON.parse('<%- JSON.stringify(history.map(h => (new Date(h.createdAt)).toLocaleTimeString()).reverse()) %>');
+  
+  let allowFan_control = <%= allowFan_control ? 'true' : 'false' %>;
+  let currentEncryptionEnabled = <%= humidityEncryption?.enabled ? 'true' : 'false' %>;
+  let currentEncryptionMethod = '<%= humidityEncryption?.method || "" %>';
+
+  const ctx1 = document.getElementById('tempChart').getContext('2d');
+  
+  const tempChart = new Chart(ctx1, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Nhiệt độ (°C)',
+        data: tempData,
+        borderColor: 'rgb(75, 192, 192)',
+        backgroundColor: 'rgba(75, 192, 192, 0.1)',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        pointBackgroundColor: 'rgb(75, 192, 192)',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: 'rgb(75, 192, 192)',
+        pointHoverBorderWidth: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      animation: {
+        duration: 750,
+        easing: 'easeInOutQuart'
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        animation: {
-          duration: 750, // Animation mượt mà
-          easing: 'easeInOutQuart'
-        },
-        interaction: {
-          mode: 'index',
-          intersect: false
-        },
-        plugins: {
-          legend: {
-            display: true,
-            position: 'top',
-            labels: {
-              usePointStyle: true,
-              padding: 15,
-              font: {
-                size: 13,
-                weight: 'bold'
-              }
-            }
-          },
-          tooltip: {
-            enabled: true,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            titleFont: {
-              size: 14,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            usePointStyle: true,
+            padding: 15,
+            font: {
+              size: 13,
               weight: 'bold'
-            },
-            bodyFont: {
-              size: 13
-            },
-            padding: 12,
-            cornerRadius: 8,
-            displayColors: true,
-            callbacks: {
-              label: function(context) {
-                return ' Nhiệt độ: ' + context.parsed.y.toFixed(1) + '°C';
-              }
             }
           }
         },
-        scales: {
-          x: {
-            display: true,
-            grid: {
-              display: true,
-              color: 'rgba(0, 0, 0, 0.05)'
-            },
-            ticks: {
-              maxTicksLimit: 10,
-              font: {
-                size: 11
-              }
-            }
+        tooltip: {
+          enabled: true,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleFont: {
+            size: 14,
+            weight: 'bold'
           },
-          y: {
-            beginAtZero: true,
-            min: 0,
-            max: 60,
-            grid: {
-              display: true,
-              color: 'rgba(0, 0, 0, 0.05)'
+          bodyFont: {
+            size: 13
+          },
+          padding: 12,
+          cornerRadius: 8,
+          displayColors: true,
+          callbacks: {
+            label: function(context) {
+              return ' Nhiệt độ: ' + context.parsed.y.toFixed(1) + '°C';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          display: true,
+          grid: {
+            display: true,
+            color: 'rgba(0, 0, 0, 0.05)'
+          },
+          ticks: {
+            maxTicksLimit: 10,
+            font: {
+              size: 11
+            }
+          }
+        },
+        y: {
+          beginAtZero: true,
+          min: 0,
+          max: 60,
+          grid: {
+            display: true,
+            color: 'rgba(0, 0, 0, 0.05)'
+          },
+          ticks: {
+            font: {
+              size: 11
             },
-            ticks: {
-              font: {
-                size: 11
-              },
-              callback: function(value) {
-                return value + '°C';
-              }
+            callback: function(value) {
+              return value + '°C';
             }
           }
         }
       }
-    });
-    const humidityChart = new Chart(document.getElementById('humidityChart').getContext('2d'), {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Độ ẩm (%)',
-          data: humidityData,
-          borderColor: 'rgb(54, 162, 235)',
-          backgroundColor: 'rgba(54, 162, 235, 0.1)',
-          borderWidth: 3,
-          fill: true,
-          tension: 0.4,
-          pointRadius: 4,
-          pointHoverRadius: 6,
-          pointBackgroundColor: 'rgb(54, 162, 235)',
-          pointBorderColor: '#fff',
-          pointBorderWidth: 2,
-          pointHoverBackgroundColor: '#fff',
-          pointHoverBorderColor: 'rgb(54, 162, 235)',
-          pointHoverBorderWidth: 3
-        }]
+    }
+  });
+
+  const ctx2 = document.getElementById('humidityChart').getContext('2d');
+  const humidityChart = new Chart(ctx2, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Độ ẩm (%)',
+        data: humidityData,
+        borderColor: 'rgb(54, 162, 235)',
+        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        pointBackgroundColor: 'rgb(54, 162, 235)',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: 'rgb(54, 162, 235)',
+        pointHoverBorderWidth: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      animation: {
+        duration: 750,
+        easing: 'easeInOutQuart'
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        animation: {
-          duration: 750,
-          easing: 'easeInOutQuart'
-        },
-        interaction: {
-          mode: 'index',
-          intersect: false
-        },
-        plugins: {
-          legend: {
-            display: true,
-            position: 'top',
-            labels: {
-              usePointStyle: true,
-              padding: 15,
-              font: {
-                size: 13,
-                weight: 'bold'
-              }
-            }
-          },
-          tooltip: {
-            enabled: true,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            titleFont: {
-              size: 14,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            usePointStyle: true,
+            padding: 15,
+            font: {
+              size: 13,
               weight: 'bold'
-            },
-            bodyFont: {
-              size: 13
-            },
-            padding: 12,
-            cornerRadius: 8,
-            displayColors: true,
-            callbacks: {
-              label: function(context) {
-                return ' Độ ẩm: ' + context.parsed.y.toFixed(1) + '%';
-              }
             }
           }
         },
-        scales: {
-          x: {
-            display: true,
-            grid: {
-              display: true,
-              color: 'rgba(0, 0, 0, 0.05)'
-            },
-            ticks: {
-              maxTicksLimit: 10,
-              font: {
-                size: 11
-              }
-            }
+        tooltip: {
+          enabled: true,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleFont: {
+            size: 14,
+            weight: 'bold'
           },
-          y: {
-            beginAtZero: true,
-            min: 0,
-            max: 100
+          bodyFont: {
+            size: 13
+          },
+          padding: 12,
+          cornerRadius: 8,
+          displayColors: true,
+          callbacks: {
+            label: function(context) {
+              return ' Độ ẩm: ' + context.parsed.y.toFixed(1) + '%';
+            }
           }
         }
+      },
+      scales: {
+        x: {
+          display: true,
+          grid: {
+            display: true,
+            color: 'rgba(0, 0, 0, 0.05)'
+          },
+          ticks: {
+            maxTicksLimit: 10,
+            font: {
+              size: 11
+            }
+          }
+        },
+        y: {
+          beginAtZero: true,
+          min: 0,
+          max: 100
+        }
       }
-    });
+    }
+  });
+
+  // Hàm giải mã độ ẩm trên client
+  function decryptHumidity(encryptedData, method) {
+    try {
+      const key_value = 165743;
+      let decrypted;
+      
+      if (method === "DES") {
+        const keyDES = new Uint8Array(8);
+        for (let i = 0; i < 4; i++) {
+          keyDES[i] = (key_value >> (24 - i * 8)) & 0xFF;
+          keyDES[i + 4] = keyDES[i];
+        }
+        const keyWordArray = CryptoJS.lib.WordArray.create(keyDES);
+        decrypted = CryptoJS.DES.decrypt(encryptedData, keyWordArray, {
+          mode: CryptoJS.mode.ECB,
+          padding: CryptoJS.pad.Pkcs7
+        });
+      } else if (method === "AES-256") {
+        const keyAES = new Uint8Array(32);
+        for (let i = 0; i < 32; i += 4) {
+          keyAES[i] = (key_value >> 24) & 0xFF;
+          keyAES[i + 1] = (key_value >> 16) & 0xFF;
+          keyAES[i + 2] = (key_value >> 8) & 0xFF;
+          keyAES[i + 3] = key_value & 0xFF;
+        }
+        const keyWordArray = CryptoJS.lib.WordArray.create(keyAES);
+        decrypted = CryptoJS.AES.decrypt(encryptedData, keyWordArray, {
+          mode: CryptoJS.mode.ECB,
+          padding: CryptoJS.pad.Pkcs7
+        });
+      }
+      
+      return decrypted.toString(CryptoJS.enc.Utf8);
+    } catch (error) {
+      console.error('Decryption error:', error);
+      return 'Lỗi giải mã';
+    }
+  }
+
+  // Cập nhật giao diện mã hóa
+  function updateEncryptionDisplay(data) {
+    const container = document.getElementById('encryptionInfoContainer');
+    const badge = document.getElementById('encryptionBadge');
+    const content = document.getElementById('encryptionContent');
+    const methodDisplay = document.getElementById('activeMethod');
+    const encryptedDisplay = document.getElementById('encryptedHumidity');
+    const decryptedDisplay = document.getElementById('decryptedHumidity');
     
-    // Socket.IO - Real-time updates
-    const socket = io();
+    if (data.enable_encryption) {
+      currentEncryptionEnabled = true;
+      container.classList.remove('disabled');
+      badge.textContent = '✓ Đã bật';
+      badge.style.background = 'rgba(46, 204, 113, 0.3)';
+      content.style.display = 'block';
+      methodDisplay.textContent = data.encryption_method;
+      encryptedDisplay.textContent = data.humidity;
+      encryptedDisplay.classList.add('updating');
+      setTimeout(() => encryptedDisplay.classList.remove('updating'), 600);
+
+      const decrypted = decryptHumidity(data.humidity);
+      decryptedDisplay.textContent = decrypted + '%';
+      decryptedDisplay.classList.add('updating');
+      setTimeout(() => decryptedDisplay.classList.remove('updating'), 600);
+    } else {
+      currentEncryptionEnabled = false;
+      container.classList.add('disabled');
+      badge.textContent = '✗ Đã tắt';
+      badge.style.background = 'rgba(231, 76, 60, 0.3)';
+      content.style.display = 'none';
+    }
+  }
+
+  // Hàm hiển thị/ẩn menu cài đặt
+  function toggleSettings() {
+    const panel = document.getElementById('settingsPanel');
+    const overlay = document.getElementById('settingsOverlay');
+    panel.classList.toggle('active');
+    overlay.classList.toggle('active');
+  }
+
+  // Hàm cấp/hủy quyền điều khiển quạt
+  function allowFanControl() {
+    const checkbox = document.getElementById('fanControlToggle');
+    const statusBadge = document.getElementById('fanControlStatus');
     const roomId = '<%= room.id %>';
     
-    // Lắng nghe dữ liệu sensor mới
-    socket.on('sensorUpdate', data => {
-      if (String(data.roomId) === roomId) {
-        // Cập nhật chart real-time với animation mượt
-        const now = new Date().toLocaleTimeString();
+    fetch(`/rooms/toggle_fan_permission/${roomId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ allowFan_control: checkbox.checked }),
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        statusBadge.className = 'status-badge ' + (checkbox.checked ? 'enabled' : 'disabled');
+        statusBadge.textContent = checkbox.checked ? 'Đã cấp' : 'Đã khóa';
+        setTimeout(() => location.reload(), 500);
+      } else {
+        alert('Có lỗi xảy ra. Vui lòng thử lại.');
+        checkbox.checked = !checkbox.checked;
+      }
+    }).catch(error => {
+      console.error('Error:', error);
+      alert('Có lỗi xảy ra. Vui lòng thử lại.');
+      checkbox.checked = !checkbox.checked;
+    });
+  }
+
+  // Hàm bật/tắt mã hóa
+  function toggleEncryption() {
+    const checkbox = document.getElementById('encryptionToggle');
+    const statusBadge = document.getElementById('encryptionStatus');
+    const methodSection = document.getElementById('encryptionMethodSection');
+    const roomId = '<%= room.id %>';
+
+    fetch(`/rooms/toggle_encryption/${roomId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        enabled: checkbox.checked 
+      }),
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        statusBadge.className = 'status-badge ' + (checkbox.checked ? 'enabled' : 'disabled');
+        statusBadge.textContent = checkbox.checked ? 'Đã bật' : 'Đã tắt';
+        methodSection.style.display = checkbox.checked ? 'block' : 'none';
+        console.log('✅ Mã hóa độ ẩm:', checkbox.checked ? 'Đã bật' : 'Đã tắt');
+
+        if (checkbox.checked == false) {
+          setTimeout(() => location.reload(), 500);
+        }
+      } else {
+        alert('Có lỗi xảy ra: ' + (data.message));
+        checkbox.checked = !checkbox.checked;
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert(`Có lỗi xảy ra: ${error}`);
+      checkbox.checked = !checkbox.checked;
+    });
+  }
+
+  // Hàm chọn thuật toán mã hóa
+  function selectEncryptionMethod(clickElement, method) {
+    const roomId = '<%= room.id %>';
+    const cards = document.querySelectorAll('.method-card');
+    
+    fetch(`/rooms/set_encryption_method/${roomId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        enabled: true,
+        method: method 
+      }),
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        cards.forEach(card => card.classList.remove('active'));
+        clickElement.classList.add('active');
+        document.getElementById('currentMethod').textContent = method;
+        console.log('✅ Thuật toán mã hóa đã chọn:', method);
+        setTimeout(() => location.reload(), 500);
+        showNotification(`Đã chọn thuật toán ${method}`, 'success');
+      } else {
+        alert('Có lỗi xảy ra: ' + (data.message));
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert(`Có lỗi xảy ra: ${error}`);
+    });
+  }
+
+  // Hàm hiển thị thông báo
+  function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 20px;
+      background: ${type === 'success' ? '#28a745' : '#007bff'};
+      color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      z-index: 10000;
+      animation: slideIn 0.3s ease;
+    `;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.style.animation = 'slideOut 0.3s ease';
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
+  }
+
+  // ✅ Socket.IO - Real-time updates
+  const socket = io();
+  const roomId = '<%= room.id %>';
+
+  socket.on('connect', () => {
+    console.log('✅ Socket connected:', socket.id);
+  });
+
+  // Lắng nghe dữ liệu sensor mới
+  socket.on('data_from_esp32_update', data => {
+    if (String(data.roomId) === roomId) {
+      const now = new Date().toLocaleTimeString();
+      const is_online = document.getElementById('is_online');
+      const status_led = document.getElementById('status_led');
+      const status_fan = document.getElementById('status_fan');
+      const control_ledSection = document.getElementById('control_ledSection');
+      const control_fanSection = document.getElementById('control_fanSection');
+
+      if (typeof data.is_online === 'boolean') {
+        is_online.className = 'status ' + (data.is_online ? 'on' : 'off');
+        is_online.textContent = data.is_online ? '🟢 Trực tuyến' : '⚫ Ngoại tuyến';
         
-        // Thêm dữ liệu mới vào chart
+        status_led.className = 'status ' + (data.status_led === "ON" ? 'on' : 'off');
+        status_led.textContent = data.status_led === "ON" ? '💡 Đang bật' : '⚫ Đang tắt';
+        
+        status_fan.className = 'status ' + (data.status_fan === "ON" ? 'on' : 'off');
+        status_fan.textContent = data.status_fan === "ON" ? '🌀 Đang bật' : '⚫ Đang tắt';
+      
+        let decryptedHumidity = data.humidity;
+        if (data.enable_encryption == true) {
+          console.log('trước khi giải mã: ' + decryptedHumidity);
+          decryptedHumidity = decryptAES(decryptedHumidity);
+          console.log('sau khi giải mã: ' + decryptedHumidity);
+        }
+
         tempChart.data.labels.push(now);
         tempChart.data.datasets[0].data.push(parseFloat(data.temperature));
-        
-        // Giới hạn 30 điểm dữ liệu trên chart
+        humidityChart.data.labels.push(now);
+        humidityChart.data.datasets[0].data.push(parseFloat(decryptedHumidity));
+      
         if (tempChart.data.labels.length > 30) {
           tempChart.data.labels.shift();
           tempChart.data.datasets[0].data.shift();
         }
-        
+        if (humidityChart.data.labels.length > 30) {
+          humidityChart.data.labels.shift();
+          humidityChart.data.datasets[0].data.shift();
+        }
+      
         tempChart.update();
-        
+        humidityChart.update();
+      
         console.log('📊 Chart updated with new temperature:', data.temperature + '°C');
-      }
-    });
-    
-    // Cập nhật trạng thái thiết bị real-time
-    socket.on('roomDetailUpdate', data => {
-      if (String(data.roomId) === roomId) {
-        const onlineStatus = document.getElementById('onlineStatus');
-        const deviceStatus = document.getElementById('deviceStatus');
-        const controlSection = document.getElementById('controlSection');
-        const toggleBtn = document.getElementById('toggleBtn');
-        
-        // Cập nhật trạng thái online/offline
-        if (typeof data.isOnline === 'boolean') {
-          onlineStatus.className = 'status ' + (data.isOnline ? 'on' : 'off');
-          onlineStatus.textContent = data.isOnline ? '🟢 Trực tuyến' : '⚫ Ngoại tuyến';
-          
-          // Cập nhật phần điều khiển
-          if (data.isOnline) {
-            controlSection.innerHTML = `
-              <form action="/rooms/toggle/${roomId}" method="POST" style="margin-top:12px;">
-                <button type="submit" id="toggleBtn">${data.status ? '🔴 Tắt thiết bị' : '🟢 Bật thiết bị'}</button>
-              </form>
-            `;
-          } else {
-            controlSection.innerHTML = '<p style="color:#dc3545; margin-top:12px;">⚠️ Thiết bị đang ngoại tuyến. Không thể điều khiển.</p>';
-          }
+        console.log('📊 Chart updated with new humidity:', data.humidity + '%');
+
+        if (data.is_online) {
+          control_ledSection.innerHTML = `<form action="/rooms/toggle_led/${data.roomId}" method="POST" style="margin-top:12px;">
+            <button type="submit" id="toggleBtn_led">${data.status_led === "ON" ? '🔴 Tắt đèn' : '🟢 Bật đèn'}</button>
+            </form>`;
+        } else {
+          control_ledSection.innerHTML = `<p style="color:#dc3545; margin-top:12px;">⚠️ Đèn đang ngoại tuyến. Không thể điều khiển.</p>`;
         }
-        
-        // Cập nhật trạng thái thiết bị (bật/tắt)
-        if (typeof data.status === 'boolean') {
-          deviceStatus.className = 'status ' + (data.status ? 'on' : 'off');
-          deviceStatus.textContent = data.status ? '💡 Đang bật' : '⚫ Đang tắt';
-          
-          // Cập nhật nút toggle nếu online
-          if (toggleBtn) {
-            toggleBtn.textContent = data.status ? '🔴 Tắt thiết bị' : '🟢 Bật thiết bị';
-          }
+
+        if (data.is_online && allowFan_control) {
+          control_fanSection.innerHTML = 
+          `<form action="/rooms/toggle_fan/${data.roomId}" method="POST" style="margin-top:12px;">
+            <button type="submit" id="toggleBtn_fan">${data.status_fan === "ON" ? '🔴 Tắt quạt' : '🟢 Bật quạt'}</button>
+          </form>`;
+        } else if (!data.is_online) {
+          control_fanSection.innerHTML = 
+          `<p style="color:#dc3545; margin-top:12px;">⚠️ Quạt đang ngoại tuyến. Không thể điều khiển.</p>`;
+        } else if (!allowFan_control) {
+          control_fanSection.innerHTML = `<p style="color:#dc3545; margin-top:12px;">⚠️ Bạn không thể điều khiển quạt. Hãy vào cài đặt để cấp quyền.</p>`;
         }
-        
-        console.log('🔄 Room status updated:', data);
       }
-    });
-  </script>
+    }
+  });
+</script>
 </body>
 </html>

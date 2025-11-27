@@ -67,84 +67,7 @@ app.get('/api/test/rooms', async (req, res) => {
   res.json({ count: rooms.length, rooms });
 });
 
-// API để ESP32 gửi dữ liệu cảm biến (nếu ESP32 chủ động gửi)
-app.post('/api/sensor-data', async (req, res) => {
-  try {
-    const { ip, temperature, timestamp, humidity } = req.body;
-    
-    console.log(`[Sensor Data] Received from ${ip}: Temp=${temperature}°C, Humidity=${humidity}%`);
-    console.log(`[Sensor Data] Kiểu dữ liệu nhiệt độ: ${typeof temperature}, kiểu dữ liệu độ ẩm: ${typeof humidity}`);
-
-    // Tìm room theo IP - linh hoạt với mọi dạng IP
-    const Room = require('./models/Room');
-    const RoomHistory = require('./models/RoomHistory');
-    const { Op } = require('sequelize');
-    
-    let room = null;
-    
-    // Bước 1: Thử khớp chính xác IP
-    room = await Room.findOne({ where: { ip } });
-    
-    // Bước 2: Nếu không tìm thấy, thử khớp theo PORT (bỏ qua host)
-    if (!room && ip.includes(':')) {
-      const requestPort = ip.split(':')[1];
-      const allRooms = await Room.findAll();
-      
-      // Tìm room có cùng port (bất kể host là gì)
-      room = allRooms.find(r => {
-        if (r.ip.includes(':')) {
-          const roomPort = r.ip.split(':')[1];
-          return roomPort === requestPort;
-        }
-        return false;
-      });
-      
-      if (room) {
-        console.log(`[Sensor Data] ✓ Matched by PORT: Request=${ip} <-> Database=${room.ip}`);
-      }
-    }
-    
-    console.log(`[Sensor Data] Looking for room with IP: ${ip}`);
-    console.log(`[Sensor Data] Room found:`, room ? `${room.name} (ID: ${room.id}, IP: ${room.ip})` : 'NULL - NOT FOUND');
-    
-    if (room) {
-      // Lưu vào RoomHistory - gồm nhiệt độ, độ ẩm và trạng thái hiện tại
-      try {
-        await RoomHistory.create({
-          roomId: room.id,
-          temperature: parseFloat(temperature),
-          humidity: parseFloat(humidity),
-          status: room.status, // Lưu trạng thái hiện tại của thiết bị
-          createdAt: timestamp || new Date()
-        });
-      } catch (saveError) {
-        console.error(`[Sensor Data] Error saving to RoomHistory for room ${room.name}:`, saveError);
-      }
-      
-      console.log(`[Sensor Data] ✓ Saved to RoomHistory for room: ${room.name}`);
-      
-      // Broadcast dữ liệu qua Socket.IO cho dashboard real-time
-      io.emit('sensorUpdate', {
-        roomId: room.id,
-        roomName: room.name,
-        temperature,
-        humidity,
-        status: room.status, // Gửi trạng thái thiết bị để hiển thị realtime
-        isOnline: room.isOnline, // Gửi trạng thái online/offline
-        timestamp
-      });
-      
-      console.log(`[Sensor Data] ✓ Broadcasted to clients`);
-    }
-    
-    res.json({ success: true, message: 'Sensor data received' });
-  } catch (error) {
-    console.error('[Sensor Data] Error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-});
-
-// Socket.io for real-time updates
+//Socket.io for real-time updates
 io.on('connection', (socket) => {
   console.log('A user connected');
   // ... handle real-time events ...
@@ -154,43 +77,144 @@ io.on('connection', (socket) => {
 });
 
 // Background job: Poll sensor data từ ESP32 mỗi 5 giây, tức cả khi ESP32 không chủ động gửi
-const { getSensorData } = require('./utils/deviceControl');
+const { getData } = require('./utils/deviceControl');
 const Room = require('./models/Room');
 const RoomHistory = require('./models/RoomHistory');
+const crypto = require('crypto');
+const SIMPLE_KEY1 = '165743'; // khóa cố định
+
+// Tạo AES key 32 bytes từ key đơn giản (giống ESP32)
+function generateKey(password) {
+  return crypto.createHash('sha256').update(password).digest();
+}
+
+// Giải mã AES-256-CBC
+function decryptAES(encryptedBase64) {
+  try {
+    // Tạo key và IV (phải giống ESP32)
+    const key = generateKey(SIMPLE_KEY1);
+    const iv = Buffer.alloc(16);
+    for(let i = 0; i < 16; i++) iv[i] = i;
+    
+    // Decode Base64
+    const encrypted = Buffer.from(encryptedBase64, 'base64');
+    
+    // Giải mã
+    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+    decipher.setAutoPadding(true);
+    
+    let decrypted = decipher.update(encrypted);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    
+    return decrypted.toString('utf8');
+  } catch(error) {
+    console.error('Lỗi giải mã:', error.message);
+    return null;
+  }
+}
 
 setInterval(async () => {
   try {
-    const rooms = await Room.findAll({ where: { isOnline: true } });
-    
+    const rooms = await Room.findAll({ where: { is_online: true } });
+    if (rooms.length === 0) {
+      console.log("Không có room nào online");
+    } else {
+      console.log(`Có ${rooms.length} roomsssssssssssssss online`);
+    }
+
     for (const room of rooms) {
-      const sensorData = await getSensorData(room.ip); // đây là chỗ server mỗi 5s sẽ lên
-      // đường dẫn http://<room.ip>/sensor để lấy dữ liệu cảm biến rồi hiển thị và lưu
-      console.log(`[Polling] Fetched data from ${room.name} (${room.ip}):`, sensorData);
-        // Lưu vào database
-       try {
-          await RoomHistory.create({
-            roomId: room.id,
-            temperature: parseFloat(sensorData.temperature),
-            humidity: parseFloat(sensorData.humidity),
-            status: room.status,
-            createdAt: new Date()
-        });
-        } catch (saveError) {
-          console.error(`[Polling] Error saving data for ${room.name}:`, saveError);
-        }
-        
-        // Broadcast realtime
-        io.emit('sensorUpdate', {
+      console.log(`Có ${room.length} room online`);
+      const data_from_esp32 = await getData(room.ip); // đây là chỗ server mỗi 5s sẽ lên
+      // đường dẫn http://<room.ip>/sensor để lấy dữ liệu cảm biến rồi hiển thị và lưu vào database
+      console.log(`[Polling] Fetched data frommmmmmmmm ${room.name} (${room.ip}):`, data_from_esp32);
+      // Lưu vào database
+      if (data_from_esp32==null) {
+        await room.update({ is_online: false });
+        await room.save();
+
+        io.emit('data_from_esp32_update', {
           roomId: room.id,
           roomName: room.name,
-          temperature: sensorData.temperature,
-          humidity: sensorData.humidity,
-          status: room.status,
-          isOnline: room.isOnline,
+          temperature: null,
+          humidity: null,
+          status_led: null,
+          status_fan: null,
+          is_online: false,
+          enable_encryption: false,
           timestamp: new Date()
         });
-        
-        console.log(`[Polling] Room ${room.name}: ${sensorData.temperature}°C, ${sensorData.humidity}%, Status: ${room.status ? 'ON' : 'OFF'}`);
+
+        console.log(`[Polling] Room ${room.name} is offline.`);
+        continue;
+        }
+
+        let decryptedHumidity = null;
+        if(room.humidityEncryption.enabled==true){
+          // Broadcast realtime
+          io.emit('data_from_esp32_update', {
+            roomId: room.id,
+            roomName: room.name,
+            temperature: data_from_esp32.temperature,
+            humidity: data_from_esp32.humidity, // giá trị mã hóa đang là string (hex)
+            status_led: data_from_esp32.status_led,
+            status_fan: data_from_esp32.status_fan,
+            is_online: data_from_esp32.is_online,
+            enable_encryption: true,
+            encryption_method: room.humidityEncryption.method,
+            timestamp: new Date()
+          });
+          // Giải mã độ ẩm
+          if (room.humidityEncryption.method == "DES") {
+            console.log('Humidity chưa được mã hóa DES');
+            decryptedHumidity = data_from_esp32.humidity;
+          }
+          else if (room.humidityEncryption.method == "AES-256") {
+            console.log('Humidity sau mã hóa AES-256: ', data_from_esp32.humidity);
+            decryptedHumidity = decryptAES(data_from_esp32.humidity);
+            console.log('Humidity sau giải mã AES-256:', decryptedHumidity);
+          }
+          try {
+            await RoomHistory.create({
+              roomId: room.id,
+              temperature: parseFloat(data_from_esp32.temperature),
+              humidity: parseFloat(decryptedHumidity),
+              status_led: data_from_esp32.status_led=="ON"? true : false,
+              status_fan: data_from_esp32.status_fan=="ON"? true : false,
+              createdAt: new Date()
+              });
+            } catch (saveError) {
+            console.error(`[Polling] Error saving data for ${room.name}:`, saveError);
+          }
+        }
+        else{
+          // Broadcast realtime
+          try {
+          await RoomHistory.create({
+            roomId: room.id,
+            temperature: parseFloat(data_from_esp32.temperature),
+            humidity: parseFloat(data_from_esp32.humidity),
+            status_led: data_from_esp32.status_led=="ON"? true : false,
+            status_fan: data_from_esp32.status_fan=="ON"? true : false,
+            createdAt: new Date()
+            });
+          } catch (saveError) {
+          console.error(`[Polling] Error saving data for ${room.name}:`, saveError);
+          }
+
+          io.emit('data_from_esp32_update', {
+            roomId: room.id,
+            roomName: room.name,
+            temperature: data_from_esp32.temperature,
+            humidity: data_from_esp32.humidity, // giá trị dạng string
+            status_led: data_from_esp32.status_led,
+            status_fan: data_from_esp32.status_fan,
+            is_online: data_from_esp32.is_online,
+            enable_encryption: false,
+            timestamp: new Date()
+          });
+          console.log(`Đã gửi dữ liệu cho phòng ${room.name}.`);
+        }
+        console.log(`[Polling] Room ${room.name}: ${data_from_esp32.temperature}°C, ${decryptedHumidity ? decryptedHumidity : data_from_esp32.humidity}%, Status LED: ${room.status_led ? 'ON' : 'OFF'}, Status Fan: ${room.status_fan ? 'ON' : 'OFF'}`);
     }
   } catch (error) {
     console.error('[Polling] Error:', error);

@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "*.ejs": "html",
+        "typeinfo": "cpp",
+        "iomanip": "cpp",
+        "sstream": "cpp",
+        "iostream": "cpp",
+        "string": "cpp",
+        "vector": "cpp"
+    }
+}

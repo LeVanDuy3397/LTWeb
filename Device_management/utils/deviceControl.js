@@ -75,7 +75,7 @@ async function checkHTTP(ip) {
       const options = {
         hostname: host,
         port: port,
-        path: '/status',
+        path: '/is_online',
         method: 'GET',
         timeout: 2000,
         rejectUnauthorized: false
@@ -84,8 +84,8 @@ async function checkHTTP(ip) {
       const protocol = useHttps ? https : http;
       
       const req = protocol.request(options, (res) => { //đây là chỗ gửi
-        // GET lên cái http /status của esp32 và nó sẽ thực hiện API đã định nghĩa,
-        // chính là gửi trạng thái hoạt động của thiết bị lên http /status này
+        // GET lên cái http /is_online của esp32 và nó sẽ thực hiện API đã định nghĩa,
+        // là gửi trạng thái hoạt động của thiết bị lên http /is_online này
         resolve(true);
       });
       
@@ -111,7 +111,7 @@ async function checkHTTP(ip) {
  * @param {boolean} status - true to turn on, false to turn off
  * @returns {Promise<boolean>} - true if successful, false if failed
  */
-async function controlDevice(ip, status) {
+async function controlLed(ip, status) {
   return new Promise((resolve, reject) => {
     try {
       // Parse IP và port
@@ -120,7 +120,7 @@ async function controlDevice(ip, status) {
       let useHttps = false;
             
       // LOG: Địa chỉ nhận điều khiển
-      console.log(`[ControlDevice] Request to:`, ip, '| Status:', status);
+      console.log(`[ControlLed] Request to:`, ip, '| Status:', status);
       
       // Tách host và port trước
       if (ip.includes(':')) {
@@ -142,7 +142,7 @@ async function controlDevice(ip, status) {
       }
       
       const postData = JSON.stringify({
-        state: status ? 'ON' : 'OFF'
+        status_led: status ? 'ON' : 'OFF'
       });
       
       const options = {
@@ -160,9 +160,99 @@ async function controlDevice(ip, status) {
       
       const protocol = useHttps ? https : http;
       
-      console.log(`[Control Device] Using ${useHttps ? 'HTTPS' : 'HTTP'} to control ${ip}`);
+      console.log(`[ControlLed] Using ${useHttps ? 'HTTPS' : 'HTTP'} to control ${ip}`);
       
-            console.log(`[ControlDevice] Using ${useHttps ? 'HTTPS' : 'HTTP'} | Host: ${host} | Port: ${port} | Path: /led`);
+      const req = protocol.request(options, (res) => {
+        let data = '';
+        
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+        
+        res.on('end', () => {
+          try {
+            const response = JSON.parse(data);
+            console.log(`Device at ${ip} responded:`, response);
+            resolve(response.success === true);
+          } catch (error) {
+            console.log(`Device at ${ip} responded with non-JSON`);
+            resolve(true); // Assume success if device responds
+          }
+        });
+      });
+      
+      req.on('error', (error) => {
+        console.error(`Error controlling device at ${ip}:`, error.message);
+        resolve(false);
+      });
+      
+      req.on('timeout', () => {
+        req.destroy();
+        console.error(`Timeout controlling device at ${ip}`);
+        resolve(false);
+      });
+      
+      req.write(postData);
+      req.end();
+      
+    } catch (error) {
+      console.error(`Exception controlling device at ${ip}:`, error);
+      resolve(false);
+    }
+  });
+}
+
+async function controlFan(ip, status) {
+  return new Promise((resolve, reject) => {
+    try {
+      // Parse IP và port
+      let host = ip;
+      let port = 80; // Default port cho ESP32
+      let useHttps = false;
+            
+      // LOG: Địa chỉ nhận điều khiển
+      console.log(`[ControlFan] Request to:`, ip, '| Status:', status);
+      
+      // Tách host và port trước
+      if (ip.includes(':')) {
+        [host, port] = ip.split(':');
+        port = parseInt(port);
+      }
+      
+      // Xác định HTTPS dựa trên port hoặc domain
+      if (port === 443) {
+        // Port 443 = HTTPS
+        useHttps = true;
+      } else if (!host.includes('localhost') && 
+                 !host.includes('127.0.0.1') && 
+                 !host.match(/^\d+\.\d+\.\d+\.\d+/) &&
+                 !ip.includes(':')) {
+        // Domain không có port = mặc định HTTPS port 443
+        useHttps = true;
+        port = 443;
+      }
+      
+      const postData = JSON.stringify({
+        status_fan: status ? 'ON' : 'OFF'
+      });
+      
+      const options = {
+        hostname: host,
+        port: port,
+        path: '/fan',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData)
+        },
+        timeout: 3000, // 3 seconds timeout
+        rejectUnauthorized: false // Bỏ qua lỗi SSL certificate
+      };
+      
+      const protocol = useHttps ? https : http;
+      
+      console.log(`[ControlFan] Using ${useHttps ? 'HTTPS' : 'HTTP'} to control ${ip}`);
+      
       const req = protocol.request(options, (res) => {
         let data = '';
         
@@ -204,11 +294,108 @@ async function controlDevice(ip, status) {
 }
 
 /**
- * Get sensor data from ESP32
+ * @param {boolean} enabled - true to turn on, false to turn off
+ */
+/**
+ * @param {string} method - encryption method to set
+ */
+async function toggle_encryption_and_method(ip, enabled, method) {
+  return new Promise((resolve, reject) => {
+    try {
+      // Parse IP và port
+      let host = ip;
+      let port = 80; // Default port cho ESP32
+      let useHttps = false;
+            
+      // LOG: Địa chỉ nhận điều khiển
+      console.log(`[ToggleEncryption] Request to:`, ip, '| Enabled:', enabled);
+      
+      // Tách host và port trước
+      if (ip.includes(':')) {
+        [host, port] = ip.split(':');
+        port = parseInt(port);
+      }
+      
+      // Xác định HTTPS dựa trên port hoặc domain
+      if (port === 443) {
+        // Port 443 = HTTPS
+        useHttps = true;
+      } else if (!host.includes('localhost') && 
+                 !host.includes('127.0.0.1') && 
+                 !host.match(/^\d+\.\d+\.\d+\.\d+/) &&
+                 !ip.includes(':')) {
+        // Domain không có port = mặc định HTTPS port 443
+        useHttps = true;
+        port = 443;
+      }
+      
+      const postData = JSON.stringify({
+        enable_encryption: enabled ? 'ON' : 'OFF',
+        encryption_method: method
+      });
+      
+      const options = {
+        hostname: host,
+        port: port,
+        path: '/encryption',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData)
+        },
+        timeout: 3000, // 3 seconds timeout
+        rejectUnauthorized: false // Bỏ qua lỗi SSL certificate
+      };
+      
+      const protocol = useHttps ? https : http;
+      
+      console.log(`[ToggleEncryption] Using ${useHttps ? 'HTTPS' : 'HTTP'} to control ${ip}`);
+      
+      const req = protocol.request(options, (res) => {
+        let data = '';
+        
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+        
+        res.on('end', () => {
+          try {
+            const response = JSON.parse(data);
+            resolve(response.success === true);
+          } catch (error) {
+            console.log(`Device at ${ip} responded with non-JSON`);
+            resolve(true); // Assume success if device responds
+          }
+        });
+      });
+      
+      req.on('error', (error) => {
+        console.error(`Error toggling encryption at ${ip}:`, error.message);
+        resolve(false);
+      });
+      
+      req.on('timeout', () => {
+        req.destroy();
+        console.error(`Timeout toggling encryption at ${ip}`);
+        resolve(false);
+      });
+      
+      req.write(postData);
+      req.end();
+      
+    } catch (error) {
+      console.error(`Exception toggling encryption at ${ip}:`, error);
+      resolve(false);
+    }
+  });
+}
+
+/**
+ * Get data from ESP32
  * @param {string} ip - Device IP address (format: host:port or domain.com)
  * @returns {Promise<Object|null>} - Sensor data or null if failed
  */
-async function getSensorData(ip) { // đây chính là hàm mà khi gọi, server sẽ lên API mà
+async function getData(ip) { // đây chính là hàm mà khi gọi, server sẽ lên API mà
   // server của esp32 đã định nghĩa để lấy dữ liệu cảm biến
   return new Promise((resolve) => {
     try {
@@ -238,26 +425,26 @@ async function getSensorData(ip) { // đây chính là hàm mà khi gọi, serve
       const options = {
         hostname: host,
         port: port,
-        path: '/sensor', 
+        path: '/data_from_esp32', 
         method: 'GET',
         timeout: 3000,
         rejectUnauthorized: false // Bỏ qua lỗi SSL certificate
       };
       
       const protocol = useHttps ? https : http;
-      
+      console.log(`Đã đến chỗ này rồi1`);
       const req = protocol.request(options, (res) => {
         let data = '';
-        
+        console.log(`Đã đến chỗ này rồi2`);
         res.on('data', (chunk) => {
           data += chunk;
         });
-        
+    
         res.on('end', () => {
           try {
-            const sensorData = JSON.parse(data);
-            console.log(`Sensor data from ${ip}:`, sensorData);
-            resolve(sensorData);
+            const Data = JSON.parse(data);
+            console.log(`Data from ${ip}:`, Data);
+            resolve(Data);
           } catch (error) {
             console.error(`Invalid sensor data from ${ip}`);
             resolve(null);
@@ -266,7 +453,7 @@ async function getSensorData(ip) { // đây chính là hàm mà khi gọi, serve
       });
       
       req.on('error', (error) => {
-        console.error(`Error getting sensor data from ${ip}:`, error.message);
+        console.error(`Error getting sensor data frommmmmmmmm ${ip}:`, error.message);
         resolve(null);
       });
       
@@ -292,10 +479,11 @@ async function getSensorData(ip) { // đây chính là hàm mà khi gọi, serve
  */
 async function checkAllRoomsStatus(rooms) {
   const promises = rooms.map(async (room) => {
-    const isOnline = await pingIP(room.ip);
-    if (room.isOnline !== isOnline) {
-      room.isOnline = isOnline;
+    const is_online = await pingIP(room.ip);
+    if (room.is_online !== is_online) {
+      room.is_online = is_online;
       await room.save();
+      console.log(`Trạng thái của phòng sau ping ${room.is_online}`);
     }
   });
   
@@ -304,7 +492,9 @@ async function checkAllRoomsStatus(rooms) {
 
 module.exports = {
   pingIP,
-  controlDevice,
-  getSensorData,
-  checkAllRoomsStatus
+  controlLed,
+  controlFan,
+  getData,
+  checkAllRoomsStatus,
+  toggle_encryption_and_method
 };

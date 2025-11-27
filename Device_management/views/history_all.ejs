@@ -11,10 +11,10 @@
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-header">
-        <h2>Device Manager</h2>
+        <h2>Quản lý thiết bị</h2>
       </div>
       <nav class="sidebar-nav">
-        <a href="/dashboard">📊 Dashboard</a>
+        <a href="/dashboard">📊 Bảng điều khiển</a>
         <a href="/rooms">🏠 Quản lý phòng</a>
         <a href="/history" class="active">📜 Lịch sử</a>
       </nav>
@@ -36,8 +36,9 @@
             <div class="room-box" onclick="location.href='/history/<%= room.id %>'">
               <h3><%= room.name %></h3>
               <p><strong>IP:</strong> <%= room.ip %></p>
-              <p><strong>Kết nối:</strong> <span class="status <%= room.isOnline ? 'on' : 'off' %>"><%= room.isOnline ? '🟢 Online' : '⚫ Offline' %></span></p>
-              <p><strong>Trạng thái:</strong> <span class="status <%= room.status ? 'on' : 'off' %>"><%= room.status ? '🟢 Bật' : '⚫ Tắt' %></span></p>
+              <p><strong>Kết nối:</strong> <span class="status <%= room.is_online ? 'on' : 'off' %>"><%= room.is_online ? '🟢 Online' : '⚫ Offline' %></span></p>
+              <p><strong>Trạng thái đèn:</strong> <span class="status <%= room.status_led ? 'on' : 'off' %>"><%= room.status_led ? '🟢 Bật' : '⚫ Tắt' %></span></p>
+              <p><strong>Trạng thái quạt:</strong> <span class="status <%= room.status_fan ? 'on' : 'off' %>"><%= room.status_fan ? '🟢 Bật' : '⚫ Tắt' %></span></p>
               <p style="margin-top:16px; color:#007bff; font-weight:600;">📜 Xem lịch sử →</p>
             </div>
           <% }); %>

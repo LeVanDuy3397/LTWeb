@@ -6,7 +6,8 @@ const RoomHistory = sequelize.define('RoomHistory', {
   roomId: { type: DataTypes.INTEGER, allowNull: false },
   temperature: { type: DataTypes.FLOAT, allowNull: false },
   humidity: { type: DataTypes.FLOAT, allowNull: false },
-  status: { type: DataTypes.BOOLEAN, allowNull: false },
+  status_led: { type: DataTypes.BOOLEAN, allowNull: false },
+  status_fan: { type: DataTypes.BOOLEAN, allowNull: false },
   createdAt: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW }
 });
 

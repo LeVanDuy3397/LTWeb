@@ -35,19 +35,21 @@
             <th>Thời gian</th>
             <th>Nhiệt độ (°C)</th>
             <th>Độ ẩm (%)</th>
-            <th>Trạng thái thiết bị</th>
+            <th>Trạng thái đèn</th>
+            <th>Trạng thái quạt</th>
           </tr>
         </thead>
         <tbody>
           <% if (history.length === 0) { %>
-            <tr><td colspan="4" style="text-align:center;">Chưa có dữ liệu lịch sử</td></tr>
+            <tr><td colspan="5" style="text-align:center;">Chưa có dữ liệu lịch sử</td></tr>
           <% } else { %>
             <% history.forEach(function(h) { %>
               <tr>
                 <td><%= new Date(h.createdAt).toLocaleString('vi-VN') %></td>
                 <td><%= h.temperature %>°C</td>
                 <td><%= h.humidity %>%</td>
-                <td><span class="status <%= h.status ? 'on' : 'off' %>"><%= h.status ? '🟢 Bật' : '🔴 Tắt' %></span></td>
+                <td><span class="status <%= h.status_led ? 'on' : 'off' %>"><%= h.status_led ? '🟢 Bật' : '🔴 Tắt' %></span></td>
+                <td><span class="status <%= h.status_fan ? 'on' : 'off' %>"><%= h.status_fan ? '🟢 Bật' : '🔴 Tắt' %></span></td>
               </tr>
             <% }); %>
           <% } %>
@@ -66,12 +68,12 @@
     const historyBody = document.querySelector('#historyTable tbody');
 
     // Real-time: Thêm dòng mới vào bảng lịch sử
-    socket.on('sensorUpdate', data => {
+    socket.on('data_from_esp32_update', data => {
       if (String(data.roomId) === roomId) {
-        if (typeof data.status !== 'boolean') return; // Không có trạng thái thì không thêm dòng mới
+        if (typeof data.is_online !== 'boolean') return; // Không có trạng thái thì không thêm dòng mới
 
         // Xóa dòng "Chưa có dữ liệu" nếu có
-        const noDataRow = historyBody.querySelector('tr td[colspan="3"]');
+        const noDataRow = historyBody.querySelector('tr td[colspan="5"]');
         if (noDataRow) {
           noDataRow.parentElement.remove();
         }
@@ -83,15 +85,18 @@
         const now = new Date().toLocaleString('vi-VN');
         const temp = parseFloat(data.temperature).toFixed(1);
         const humidity = parseFloat(data.humidity).toFixed(1);
-        let statusHtml = data.status
+        let status_ledHtml = data.status_led=="ON"
           ? '<span class="status on">🟢 Bật</span>'
           : '<span class="status off">🔴 Tắt</span>';
-
+        let status_fanHtml = data.status_fan=="ON"
+          ? '<span class="status on">🟢 Bật</span>'
+          : '<span class="status off">🔴 Tắt</span>';
         newRow.innerHTML = `
           <td>${now}</td>
           <td>${temp}°C</td>
           <td>${humidity}%</td>
-          <td>${statusHtml}</td>
+          <td>${status_ledHtml}</td>
+          <td>${status_fanHtml}</td>
         `;
 
         // Thêm vào đầu bảng

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quản lý phòng - Quản lý thiết bị</title>
   <link rel="stylesheet" href="/css/style.css">
+  <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
   <div class="dashboard-layout">
@@ -142,24 +143,26 @@
             <th>Tên phòng</th>
             <th>Địa chỉ (IP/Domain)</th>
             <th>Kết nối</th>
-            <th>Trạng thái thiết bị</th>
+            <th>Trạng thái đèn</th>
+            <th>Trạng thái quạt</th>
             <th>Hành động</th>
           </tr>
         </thead>
         <tbody>
           <% if (rooms.length === 0) { %>
-            <tr><td colspan="5" style="text-align:center;">Chưa có phòng nào</td></tr>
+            <tr><td colspan="6" style="text-align:center;">Chưa có phòng nào</td></tr>
           <% } else { %>
             <% rooms.forEach(function(room) { %>
               <tr>
                 <td><strong><%= room.name %></strong></td>
                 <td><%= room.ip %></td>
                 <td>
-                  <span class="status <%= room.isOnline ? 'on' : 'off' %>">
-                    <%= room.isOnline ? '🟢 Trực tuyến' : '⚫ Ngoại tuyến' %>
+                  <span class="status <%= room.is_online ? 'on' : 'off' %>">
+                    <%= room.is_online ? '🟢 Trực tuyến' : '⚫ Ngoại tuyến' %>
                   </span>
                 </td>
-                <td><span class="status <%= room.status ? 'on' : 'off' %>"><%= room.status ? '💡 Bật' : '⚫ Tắt' %></span></td>
+                <td><span class="status <%= room.status_led ? 'on' : 'off' %>"><%= room.status_led ? '💡 Bật' : '⚫ Tắt' %></span></td>
+                <td><span class="status <%= room.status_fan ? 'on' : 'off' %>"><%= room.status_fan ? '🌀 Bật' : '⚫ Tắt' %></span></td>
                 <td>
                   <button onclick="location.href='/dashboard/room/<%= room.id %>'">📈 Xem chi tiết</button>
                   <button class="btn-warning btn-edit" data-id="<%= room.id %>" data-name="<%= room.name %>" data-ip="<%= room.ip %>">✏️ Sửa</button>
