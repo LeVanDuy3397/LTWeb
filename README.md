@@ -10,12 +10,12 @@ Dự án này gồm:
 ### 1️⃣ Giao diện chi tiết trong 1 phòng
 Hiển thị trạng thái phòng, thiết bị online/offline, số liệu cảm biến cập nhật theo thời gian thực và điều khiển thiết bị
 
-![Chi tiết phòng](Chi_tiet_.jpg)
+![Chi tiết phòng](Chi_tiet.jpg)
 ---
 
 
 ### 2️⃣ Mục cài đặt
-Chọn tính năng cấp quyền điều khiển quạt và chọn loại mã hóa
+Chọn tính năng cấp quyền điều khiển quạt, sử dụng mã hóa và chọn loại mã hóa AES-256 hoặc DES
 
 ![Dashboard](Uy_quyen.jpg)
 ---
