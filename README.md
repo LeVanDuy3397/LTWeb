@@ -9,18 +9,24 @@ Dự án này gồm:
 ## 📸 Demo
 ### 1️⃣ Giao diện chi tiết trong 1 phòng
 Hiển thị trạng thái phòng, thiết bị online/offline, số liệu cảm biến cập nhật theo thời gian thực và điều khiển thiết bị
-![Dashboard](Chi_tiet_.jpg)
+
+![Chi tiết phòng](Chi_tiet_.jpg)
 ---
+
 
 ### 2️⃣ Mục cài đặt
 Chọn tính năng cấp quyền điều khiển quạt và chọn loại mã hóa
+
 ![Dashboard](Uy_quyen.jpg)
 ---
 
+
 ### 3️⃣ Kiến trúc hệ thống
 Toàn bộ luồng dữ liệu từ ESP32 → Server → Web:
+
 ![System Architecture](Kien_truc.jpg)
 ---
+
 
 ## 🧩 Công nghệ sử dụng
 
