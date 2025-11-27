@@ -123,7 +123,6 @@ setInterval(async () => {
     }
 
     for (const room of rooms) {
-      console.log(`Có ${room.length} room online`);
       const data_from_esp32 = await getData(room.ip); // đây là chỗ server mỗi 5s sẽ lên
       // đường dẫn http://<room.ip>/sensor để lấy dữ liệu cảm biến rồi hiển thị và lưu vào database
       console.log(`[Polling] Fetched data frommmmmmmmm ${room.name} (${room.ip}):`, data_from_esp32);
