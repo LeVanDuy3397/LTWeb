@@ -118,49 +118,6 @@
         </div>
       </div>
 
-      <!-- Khối hiển thị thông tin mã hóa độ ẩm -->
-      <div class="encryption-info-container" id="encryptionInfoContainer">
-        <div class="encryption-header">
-          <span class="encryption-icon">🔐</span>
-          <h3 id="encryptionTitle">Trạng thái mã hóa độ ẩm</h3>
-          <span class="encryption-badge" id="encryptionBadge">
-            <%= humidityEncryption?.enabled ? '✓ Đã bật' : '✗ Đã tắt' %>
-          </span>
-        </div>
-        <div class="encryption-content" id="encryptionContent"  style="<%= humidityEncryption?.enabled ? '' : 'display:none;' %>">
-          <div class="encryption-method-display">
-            <span class="method-label">Thuật toán:</span>
-            <span class="method-value" id="activeMethod">
-              <%= humidityEncryption?.method || 'N/A' %>
-            </span>
-          </div>
-          <div class="humidity-data-row">
-            <div class="data-box encrypted-box">
-              <div class="data-label">
-                <span class="lock-icon">🔒</span>
-                Dữ liệu mã hóa
-              </div>
-              <div class="data-value encrypted-value" id="encryptedHumidity">
-                Đang chờ dữ liệu...
-              </div>
-            </div>
-            <div class="decrypt-arrow">
-              <span>→</span>
-            </div>
-            <div class="data-box decrypted-box">
-              <div class="data-label">
-                <span class="unlock-icon">🔓</span>
-                Dữ liệu giải mã
-              </div>
-              <div class="data-value decrypted-value" id="decryptedHumidity">
-                Đang chờ dữ liệu...
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-
       <div class="chart-container">
   <h3>📈 Biểu đồ nhiệt độ</h3>
         <canvas id="tempChart" width="400" height="150"></canvas>
@@ -182,8 +139,6 @@
   const labels = JSON.parse('<%- JSON.stringify(history.map(h => (new Date(h.createdAt)).toLocaleTimeString()).reverse()) %>');
   
   let allowFan_control = <%= allowFan_control ? 'true' : 'false' %>;
-  let currentEncryptionEnabled = <%= humidityEncryption?.enabled ? 'true' : 'false' %>;
-  let currentEncryptionMethod = '<%= humidityEncryption?.method || "" %>';
 
   const ctx1 = document.getElementById('tempChart').getContext('2d');
   
@@ -378,78 +333,6 @@
     }
   });
 
-  // Hàm giải mã độ ẩm trên client
-  function decryptHumidity(encryptedData, method) {
-    try {
-      const key_value = 165743;
-      let decrypted;
-      
-      if (method === "DES") {
-        const keyDES = new Uint8Array(8);
-        for (let i = 0; i < 4; i++) {
-          keyDES[i] = (key_value >> (24 - i * 8)) & 0xFF;
-          keyDES[i + 4] = keyDES[i];
-        }
-        const keyWordArray = CryptoJS.lib.WordArray.create(keyDES);
-        decrypted = CryptoJS.DES.decrypt(encryptedData, keyWordArray, {
-          mode: CryptoJS.mode.ECB,
-          padding: CryptoJS.pad.Pkcs7
-        });
-      } else if (method === "AES-256") {
-        const keyAES = new Uint8Array(32);
-        for (let i = 0; i < 32; i += 4) {
-          keyAES[i] = (key_value >> 24) & 0xFF;
-          keyAES[i + 1] = (key_value >> 16) & 0xFF;
-          keyAES[i + 2] = (key_value >> 8) & 0xFF;
-          keyAES[i + 3] = key_value & 0xFF;
-        }
-        const keyWordArray = CryptoJS.lib.WordArray.create(keyAES);
-        decrypted = CryptoJS.AES.decrypt(encryptedData, keyWordArray, {
-          mode: CryptoJS.mode.ECB,
-          padding: CryptoJS.pad.Pkcs7
-        });
-      }
-      
-      return decrypted.toString(CryptoJS.enc.Utf8);
-    } catch (error) {
-      console.error('Decryption error:', error);
-      return 'Lỗi giải mã';
-    }
-  }
-
-  // Cập nhật giao diện mã hóa
-  function updateEncryptionDisplay(data) {
-    const container = document.getElementById('encryptionInfoContainer');
-    const badge = document.getElementById('encryptionBadge');
-    const content = document.getElementById('encryptionContent');
-    const methodDisplay = document.getElementById('activeMethod');
-    const encryptedDisplay = document.getElementById('encryptedHumidity');
-    const decryptedDisplay = document.getElementById('decryptedHumidity');
-    
-    if (data.enable_encryption) {
-      currentEncryptionEnabled = true;
-      container.classList.remove('disabled');
-      badge.textContent = '✓ Đã bật';
-      badge.style.background = 'rgba(46, 204, 113, 0.3)';
-      content.style.display = 'block';
-      methodDisplay.textContent = data.encryption_method;
-      encryptedDisplay.textContent = data.humidity;
-      encryptedDisplay.classList.add('updating');
-      setTimeout(() => encryptedDisplay.classList.remove('updating'), 600);
-
-      const decrypted = decryptHumidity(data.humidity);
-      decryptedDisplay.textContent = decrypted + '%';
-      decryptedDisplay.classList.add('updating');
-      setTimeout(() => decryptedDisplay.classList.remove('updating'), 600);
-    } else {
-      currentEncryptionEnabled = false;
-      container.classList.add('disabled');
-      badge.textContent = '✗ Đã tắt';
-      badge.style.background = 'rgba(231, 76, 60, 0.3)';
-      content.style.display = 'none';
-    }
-  }
-
   // Hàm hiển thị/ẩn menu cài đặt
   function toggleSettings() {
     const panel = document.getElementById('settingsPanel');
@@ -613,18 +496,11 @@
         
         status_fan.className = 'status ' + (data.status_fan === "ON" ? 'on' : 'off');
         status_fan.textContent = data.status_fan === "ON" ? '🌀 Đang bật' : '⚫ Đang tắt';
-      
-        let decryptedHumidity = data.humidity;
-        if (data.enable_encryption == true) {
-          console.log('trước khi giải mã: ' + decryptedHumidity);
-          decryptedHumidity = decryptAES(decryptedHumidity);
-          console.log('sau khi giải mã: ' + decryptedHumidity);
-        }
 
         tempChart.data.labels.push(now);
         tempChart.data.datasets[0].data.push(parseFloat(data.temperature));
         humidityChart.data.labels.push(now);
-        humidityChart.data.datasets[0].data.push(parseFloat(decryptedHumidity));
+        humidityChart.data.datasets[0].data.push(parseFloat(data.humidity));
       
         if (tempChart.data.labels.length > 30) {
           tempChart.data.labels.shift();

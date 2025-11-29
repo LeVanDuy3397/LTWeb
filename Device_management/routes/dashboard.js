@@ -37,37 +37,7 @@ router.get('/room/:id', async (req, res) => {
     limit: 30
   });
   
-  // Tạo AES key 32 bytes từ key đơn giản (giống ESP32)
-  function generateKey(password) {
-    return crypto.createHash('sha256').update(password).digest();
-  }
-  
-  // Giải mã AES-256-CBC
-  function decryptAES(encryptedBase64) {
-    try {
-      // Tạo key và IV (phải giống ESP32)
-      const key = generateKey(SIMPLE_KEY);
-      const iv = Buffer.alloc(16);
-      for(let i = 0; i < 16; i++) iv[i] = i;
-      
-      // Decode Base64
-      const encrypted = Buffer.from(encryptedBase64, 'base64');
-      
-      // Giải mã
-      const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-      decipher.setAutoPadding(true);
-      
-      let decrypted = decipher.update(encrypted);
-      decrypted = Buffer.concat([decrypted, decipher.final()]);
-      
-      return decrypted.toString('utf8');
-    } catch(error) {
-      console.error('Lỗi giải mã:', error.message);
-      return null;
-    }
-  }
-
-  res.render('room_detail', { room, history, allowFan_control, humidityEncryption, decryptAES });
+  res.render('room_detail', { room, history, allowFan_control, humidityEncryption});
 });
 
 module.exports = router;

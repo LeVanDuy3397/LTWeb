@@ -83,7 +83,7 @@ const RoomHistory = require('./models/RoomHistory');
 const crypto = require('crypto');
 const SIMPLE_KEY1 = '165743'; // khóa cố định
 
-// Tạo AES key 32 bytes từ key đơn giản (giống ESP32)
+// Tạo AES key 32 bytes từ key đơn giản (giống ESP3)
 function generateKey(password) {
   return crypto.createHash('sha256').update(password).digest();
 }
@@ -119,13 +119,13 @@ setInterval(async () => {
     if (rooms.length === 0) {
       console.log("Không có room nào online");
     } else {
-      console.log(`Có ${rooms.length} roomsssssssssssssss online`);
+      console.log(`Có ${rooms.length} rooms online`);
     }
 
     for (const room of rooms) {
       const data_from_esp32 = await getData(room.ip); // đây là chỗ server mỗi 5s sẽ lên
       // đường dẫn http://<room.ip>/sensor để lấy dữ liệu cảm biến rồi hiển thị và lưu vào database
-      console.log(`[Polling] Fetched data frommmmmmmmm ${room.name} (${room.ip}):`, data_from_esp32);
+      console.log(`[Polling] Fetched data from ${room.name} (${room.ip}):`, data_from_esp32);
       // Lưu vào database
       if (data_from_esp32==null) {
         await room.update({ is_online: false });
@@ -149,19 +149,6 @@ setInterval(async () => {
 
         let decryptedHumidity = null;
         if(room.humidityEncryption.enabled==true){
-          // Broadcast realtime
-          io.emit('data_from_esp32_update', {
-            roomId: room.id,
-            roomName: room.name,
-            temperature: data_from_esp32.temperature,
-            humidity: data_from_esp32.humidity, // giá trị mã hóa đang là string (hex)
-            status_led: data_from_esp32.status_led,
-            status_fan: data_from_esp32.status_fan,
-            is_online: data_from_esp32.is_online,
-            enable_encryption: true,
-            encryption_method: room.humidityEncryption.method,
-            timestamp: new Date()
-          });
           // Giải mã độ ẩm
           if (room.humidityEncryption.method == "DES") {
             console.log('Humidity chưa được mã hóa DES');
@@ -173,6 +160,17 @@ setInterval(async () => {
             console.log('Humidity sau giải mã AES-256:', decryptedHumidity);
           }
           try {
+            io.emit('data_from_esp32_update', {
+              roomId: room.id,
+              roomName: room.name,
+              temperature: data_from_esp32.temperature,
+              humidity: parseFloat(decryptedHumidity), 
+              status_led: data_from_esp32.status_led,
+              status_fan: data_from_esp32.status_fan,
+              is_online: data_from_esp32.is_online,
+              enable_encryption: true,
+              timestamp: new Date()
+            });
             await RoomHistory.create({
               roomId: room.id,
               temperature: parseFloat(data_from_esp32.temperature),
@@ -186,7 +184,6 @@ setInterval(async () => {
           }
         }
         else{
-          // Broadcast realtime
           try {
           await RoomHistory.create({
             roomId: room.id,
@@ -199,7 +196,7 @@ setInterval(async () => {
           } catch (saveError) {
           console.error(`[Polling] Error saving data for ${room.name}:`, saveError);
           }
-
+          // Broadcast realtime
           io.emit('data_from_esp32_update', {
             roomId: room.id,
             roomName: room.name,

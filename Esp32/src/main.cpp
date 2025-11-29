@@ -177,8 +177,8 @@
 #include <algorithm>
 
 // ====== Cấu hình WiFi ======
-const char *WIFI_SSID = "Duy";
-const char *WIFI_PASSWORD = "0988759274";
+const char *WIFI_SSID = "MiXue";
+const char *WIFI_PASSWORD = "88888888";
 
 String IP_Esp32 = "";
 // ====== Cấu hình thiết bị ======
@@ -187,8 +187,8 @@ bool ledState = false;
 bool fanState = false;
 const int LED_PIN = 2;            // LED trên nhiều board ESP32 là GPIO2
 const int FAN_PIN = 4;            // Quạt nối với GPIO4 (ví dụ)
-float Temperature = 27.5;         // Demo: dùng giá trị giả. Thực tế đọc từ cảm biến (DS18B20/DHT22...)
-float Humidity = 45.0;            // Demo: dùng giá trị giả. Thực tế đọc từ cảm biến (DHT22...)
+float Temperature = 27.5;         // Thực tế đọc từ cảm biến (DS18B20/DHT22...)
+float Humidity = 45.0;            // Thực tế đọc từ cảm biến (DHT22...)
 String enable_encryption = "OFF"; // Bật/tắt mã hóa nhiệt độ
 String encryption_method = "";    // Chọn phương thức mã hóa: "DES" hoặc "AES"
 const char *simpleKey1 = "165743";
